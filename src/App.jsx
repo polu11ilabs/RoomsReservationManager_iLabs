@@ -2967,6 +2967,61 @@ function App() {
    * ============================================================
    */
 
+  if (session && profile && profile.role === "pending") {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#f6f7f9",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "30px 20px",
+          fontFamily: "Arial, sans-serif",
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "460px",
+            background: "#ffffff",
+            borderRadius: "18px",
+            padding: "38px",
+            boxShadow: "0 15px 45px rgba(0, 0, 0, 0.08)",
+            textAlign: "center",
+          }}
+        >
+          <div style={{ fontSize: "28px", fontWeight: 800, color: "#111827", marginBottom: "12px" }}>
+            I-LABS
+          </div>
+          <div style={{ fontSize: "48px", marginBottom: "16px" }}>⏳</div>
+          <h2 style={{ margin: "0 0 12px", fontSize: "20px", color: "#111827" }}>
+            Account in attesa di approvazione
+          </h2>
+          <p style={{ color: "#7b8495", fontSize: "14px", lineHeight: 1.6, margin: "0 0 24px" }}>
+            La tua registrazione è stata ricevuta. Un amministratore deve approvare il tuo account prima che tu possa accedere.
+          </p>
+          <button
+            type="button"
+            onClick={handleLogout}
+            style={{
+              padding: "10px 20px",
+              border: "1px solid #dfe3e9",
+              borderRadius: "8px",
+              background: "white",
+              color: "#4b5563",
+              fontSize: "13px",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Esci
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
   if (authLoading) {
     return (
       <div
