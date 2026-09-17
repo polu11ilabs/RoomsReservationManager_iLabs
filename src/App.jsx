@@ -377,41 +377,145 @@ function App() {
   useEffect(() => {
     let mounted = true;
 
-    const startAuth = async () => {
-      if (!mounted) return;
+    const initializeSession = async () => {
+      try {
+        const {
+          data: { session: currentSession },
+          error: sessionError,
+        } = await supabase.auth.getSession();
 
-      await initializeAuth();
+        if (!mounted) return;
+
+        if (sessionError) {
+          console.error("Errore recupero sessione:", sessionError);
+
+          setSession(null);
+          setProfile(null);
+          setAuthLoading(false);
+
+          return;
+        }
+
+        /*
+         * Nessun utente autenticato.
+         */
+        if (!currentSession?.user) {
+          setSession(null);
+          setProfile(null);
+          setAuthLoading(false);
+
+          return;
+        }
+
+        /*
+         * Recuperiamo il profilo dell'utente.
+         */
+        const { data: userProfile, error: profileError } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", currentSession.user.id)
+          .maybeSingle();
+
+        if (!mounted) return;
+
+        if (profileError || !userProfile) {
+          console.error("Errore recupero profilo:", profileError);
+
+          await supabase.auth.signOut();
+
+          setSession(null);
+          setProfile(null);
+          setAuthLoading(false);
+
+          return;
+        }
+
+        console.log("RUOLO UTENTE:", userProfile.role);
+
+        /*
+         * ============================================================
+         * ACCOUNT PENDING
+         * ============================================================
+         *
+         * Non può accedere ai calendari.
+         */
+        if (userProfile.role === "pending") {
+          setSession(null);
+          setProfile(null);
+          setAuthLoading(false);
+
+          await supabase.auth.signOut();
+
+          return;
+        }
+
+        /*
+         * ============================================================
+         * ACCOUNT USER / ADMIN
+         * ============================================================
+         */
+        if (userProfile.role === "user" || userProfile.role === "admin") {
+          setProfile(userProfile);
+          setSession(currentSession);
+          setAuthLoading(false);
+
+          return;
+        }
+
+        /*
+         * Ruolo non valido.
+         */
+        console.error("Ruolo non valido:", userProfile.role);
+
+        await supabase.auth.signOut();
+
+        setSession(null);
+        setProfile(null);
+        setAuthLoading(false);
+      } catch (error) {
+        console.error("Errore inizializzazione autenticazione:", error);
+
+        if (!mounted) return;
+
+        setSession(null);
+        setProfile(null);
+        setAuthLoading(false);
+      }
     };
 
-    startAuth();
+    initializeSession();
 
+    /*
+     * ============================================================
+     * CAMBIAMENTI DELLA SESSIONE
+     * ============================================================
+     */
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, currentSession) => {
       if (!mounted) return;
 
-      // SIGNED_OUT
+      /*
+       * Logout.
+       */
       if (event === "SIGNED_OUT") {
         setSession(null);
         setProfile(null);
         setAuthLoading(false);
+
         return;
       }
 
-      // SIGNED_IN / TOKEN_REFRESHED / INITIAL_SESSION
-      if (
-        currentSession &&
-        (event === "SIGNED_IN" ||
-          event === "TOKEN_REFRESHED" ||
-          event === "INITIAL_SESSION")
-      ) {
-        // Evita di eseguire direttamente operazioni asincrone
-        // dentro onAuthStateChange.
-        setTimeout(() => {
-          if (mounted) {
-            checkAuthenticatedUser(currentSession);
-          }
-        }, 0);
+      /*
+       * Per SIGNED_IN non facciamo un'altra verifica
+       * immediata qui perché handleLogin() verifica già
+       * il profilo e imposta session/profile.
+       *
+       * In questo modo evitiamo il caricamento infinito
+       * e le verifiche duplicate.
+       */
+      if (event === "TOKEN_REFRESHED" && currentSession) {
+        setSession(currentSession);
       }
     });
 
