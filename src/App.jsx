@@ -4840,7 +4840,7 @@ function App() {
               <p>Nessun utente trovato.</p>
             ) : (
               <div>
-                {users.map((user) => (
+                              {users.filter((u) => u.role !== "pending").map((user) => (
                   <div
                     key={user.id}
                     style={{
