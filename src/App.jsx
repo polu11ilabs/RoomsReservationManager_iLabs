@@ -325,6 +325,13 @@ function App() {
   const [editRoomColor, setEditRoomColor] = useState("#2563eb");
   const [savingRoom, setSavingRoom] = useState(false);
 
+    useEffect(() => {
+    const handler = () => forceMinuteTick((t) => t + 1);
+    window.addEventListener("showlogin", handler);
+    return () => window.removeEventListener("showlogin", handler);
+  }, []);
+
+
   /*
    * Recupero il profilo dell'utente autenticato.
    */
@@ -2988,18 +2995,7 @@ function App() {
   }
 
   if (!session || !currentUser) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "#f6f7f9",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "30px 20px",
-          fontFamily: "Arial, sans-serif",
-        }}
-      >
+
         <div
           style={{
             width: "100%",
