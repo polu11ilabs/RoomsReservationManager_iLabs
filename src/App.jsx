@@ -2995,17 +2995,86 @@ function App() {
   }
 
   if (!session || !currentUser) {
-
+    if (window.__showLogin !== true) {
+      return (
         <div
           style={{
-            width: "100%",
-            maxWidth: "460px",
-            background: "#ffffff",
-            borderRadius: "18px",
-            padding: "38px",
-            boxShadow: "0 15px 45px rgba(0, 0, 0, 0.08)",
+            minHeight: "100vh",
+            background: "#172033",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "30px 20px",
+            fontFamily: "Arial, sans-serif",
           }}
         >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "460px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "16px",
+            }}
+          >
+            <div style={{ fontSize: "32px", fontWeight: 900, color: "white", letterSpacing: "-1px", marginBottom: "8px" }}>
+              I-LABS
+            </div>
+            <div style={{ color: "#8f9bad", fontSize: "13px", fontWeight: 700, letterSpacing: "1.5px", marginBottom: "24px" }}>
+              PRENOTAZIONE SALE
+            </div>
+            <button
+              type="button"
+              onClick={() => { window.__showLogin = true; window.dispatchEvent(new Event("showlogin")); }}
+              style={{
+                width: "100%",
+                padding: "16px",
+                border: "none",
+                borderRadius: "10px",
+                background: "white",
+                color: "#172033",
+                fontSize: "15px",
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              Accedi / Registrati
+            </button>
+            <button
+              type="button"
+              onClick={() => window.location.href = "/visitatori"}
+              style={{
+                width: "100%",
+                padding: "16px",
+                border: "1px solid rgba(255,255,255,0.2)",
+                borderRadius: "10px",
+                background: "transparent",
+                color: "white",
+                fontSize: "15px",
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              Visualizza disponibilità sale
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "#f6f7f9",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "30px 20px",
+          fontFamily: "Arial, sans-serif",
+        }}
+      >
           <div
             style={{
               fontSize: "28px",
