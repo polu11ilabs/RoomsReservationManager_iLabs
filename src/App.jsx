@@ -4749,6 +4749,80 @@ function App() {
         )}
 
         {isAdmin && (
+          <section className="rooms-section" style={{ marginBottom: "40px" }}>
+            <div className="section-heading">
+              <div>
+                <span className="eyebrow">AMMINISTRAZIONE</span>
+                <h3>Gestione nuovi account</h3>
+              </div>
+            </div>
+
+            {users.filter((u) => u.role === "pending").length === 0 ? (
+              <div style={{ padding: "20px", color: "#7b8495", textAlign: "center" }}>
+                Nessun account in attesa di approvazione.
+              </div>
+            ) : (
+              <div>
+                {users
+                  .filter((u) => u.role === "pending")
+                  .map((user) => (
+                    <div
+                      key={user.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "20px",
+                        padding: "14px 0",
+                        borderBottom: "1px solid #e5e7eb",
+                      }}
+                    >
+                      <div>
+                        <strong>{user.first_name} {user.last_name}</strong>
+                        <div style={{ marginTop: "4px", color: "#666" }}>{user.email}</div>
+                      </div>
+
+                      <div style={{ display: "flex", gap: "10px" }}>
+                        <button
+                          type="button"
+                          onClick={() => changeUserRole(user.id, "user")}
+                          style={{
+                            padding: "7px 14px",
+                            border: "none",
+                            borderRadius: "6px",
+                            background: "#16a34a",
+                            color: "white",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Approva
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => deleteUserAccount(user.id)}
+                          style={{
+                            padding: "7px 14px",
+                            border: "1px solid #dc2626",
+                            borderRadius: "6px",
+                            background: "white",
+                            color: "#dc2626",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Rifiuta
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </section>
+        )}
+        
+        {isAdmin && (
           <section className="rooms-section">
             <div className="section-heading">
               <div>
