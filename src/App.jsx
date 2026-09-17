@@ -502,8 +502,12 @@ function App() {
      * Supabase crea direttamente la sessione.
      */
 
-    if (data.session && data.user) {
-      await loadProfile(data.user);
+        if (data.session && data.user) {
+      await supabase.auth.signOut();
+
+      setAuthMessage(
+        "Registrazione completata. Il tuo account è in attesa di approvazione da parte di un amministratore.",
+      );
 
       setAuthSubmitting(false);
 
