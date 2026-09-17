@@ -377,219 +377,41 @@ function App() {
   useEffect(() => {
     let mounted = true;
 
-    const checkAuthenticatedUser = async (currentSession) => {
-      if (!currentSession?.user) {
-        if (mounted) {
-          setSession(null);
-          setProfile(null);
-        }
+    const startAuth = async () => {
+      if (!mounted) return;
 
-        return false;
-      }
-
-      const checkAuthenticatedUser = async (currentSession) => {
-        if (!currentSession?.user) {
-          setSession(null);
-          setProfile(null);
-          setAuthLoading(false);
-          return false;
-        }
-
-        setAuthLoading(true);
-
-        const { data: userProfile, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", currentSession.user.id)
-          .single();
-
-        if (error || !userProfile) {
-          await supabase.auth.signOut();
-
-          setSession(null);
-          setProfile(null);
-          setAuthLoading(false);
-
-          return false;
-        }
-
-        // L'utente è ancora in attesa di approvazione
-        if (userProfile.role === "pending") {
-          setSession(null);
-          setProfile(userProfile);
-          setAuthLoading(false);
-
-          // Elimina anche la sessione Supabase
-          await supabase.auth.signOut();
-
-          return false;
-        }
-
-        // Sono ammessi soltanto user e admin
-        if (userProfile.role !== "user" && userProfile.role !== "admin") {
-          await supabase.auth.signOut();
-
-          setSession(null);
-          setProfile(null);
-          setAuthLoading(false);
-
-          return false;
-        }
-
-        setSession(currentSession);
-        setProfile(userProfile);
-        setAuthLoading(false);
-
-        return true;
-      };
-
-      if (!profileData) {
-        console.error(
-          "Profilo non trovato per l'utente:",
-          currentSession.user.id,
-        );
-
-        await supabase.auth.signOut();
-
-        if (mounted) {
-          setSession(null);
-          setProfile(null);
-          setAuthError("Il profilo dell'utente non è stato trovato.");
-        }
-
-        return false;
-      }
-
-      console.log("CONTROLLO AUTORIZZAZIONE:", profileData);
-
-      /*
-       * ============================================================
-       * ACCOUNT IN ATTESA
-       * ============================================================
-       */
-
-      if (profileData.role === "pending") {
-        console.log("ACCESSO BLOCCATO: account pending");
-
-        await supabase.auth.signOut();
-
-        if (mounted) {
-          setSession(null);
-          setProfile(null);
-
-          setAuthError("");
-
-          setAuthMessage(
-            "Il tuo account è in attesa di approvazione da parte di un amministratore.",
-          );
-        }
-
-        return false;
-      }
-
-      /*
-       * ============================================================
-       * RUOLO NON AUTORIZZATO
-       * ============================================================
-       */
-
-      if (profileData.role !== "user" && profileData.role !== "admin") {
-        console.log(
-          "ACCESSO BLOCCATO: ruolo non autorizzato:",
-          profileData.role,
-        );
-
-        await supabase.auth.signOut();
-
-        if (mounted) {
-          setSession(null);
-          setProfile(null);
-
-          setAuthMessage("");
-
-          setAuthError("Il tuo account non è ancora abilitato all'accesso.");
-        }
-
-        return false;
-      }
-
-      /*
-       * ============================================================
-       * ACCOUNT APPROVATO
-       * ============================================================
-       */
-
-      if (mounted) {
-        setSession(currentSession);
-        setProfile(profileData);
-        setAuthError("");
-      }
-
-      return true;
+      await initializeAuth();
     };
 
-    const initializeAuth = async () => {
-      if (mounted) {
-        setAuthLoading(true);
-      }
-
-      const {
-        data: { session: currentSession },
-        error,
-      } = await supabase.auth.getSession();
-
-      if (error) {
-        console.error("Errore recupero sessione:", error);
-      }
-
-      if (!mounted) {
-        return;
-      }
-
-      if (!currentSession?.user) {
-        setSession(null);
-        setProfile(null);
-        setAuthLoading(false);
-
-        return;
-      }
-
-      await checkAuthenticatedUser(currentSession);
-
-      if (mounted) {
-        setAuthLoading(false);
-      }
-    };
-
-    initializeAuth();
+    startAuth();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-      if (!mounted) {
-        return;
-      }
+    } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      if (!mounted) return;
 
-      /*
-       * NON impostiamo subito la sessione.
-       *
-       * Prima verifichiamo il ruolo nel database.
-       */
-
-      if (!newSession?.user) {
+      // SIGNED_OUT
+      if (event === "SIGNED_OUT") {
         setSession(null);
         setProfile(null);
         setAuthLoading(false);
-
         return;
       }
 
-      setAuthLoading(true);
-
-      await checkAuthenticatedUser(newSession);
-
-      if (mounted) {
-        setAuthLoading(false);
+      // SIGNED_IN / TOKEN_REFRESHED / INITIAL_SESSION
+      if (
+        currentSession &&
+        (event === "SIGNED_IN" ||
+          event === "TOKEN_REFRESHED" ||
+          event === "INITIAL_SESSION")
+      ) {
+        // Evita di eseguire direttamente operazioni asincrone
+        // dentro onAuthStateChange.
+        setTimeout(() => {
+          if (mounted) {
+            checkAuthenticatedUser(currentSession);
+          }
+        }, 0);
       }
     });
 
@@ -641,58 +463,70 @@ function App() {
 
     setAuthSubmitting(true);
 
-    const { data, error } = await supabase.auth.signUp({
-      email: authEmail.trim(),
-      password: authPassword,
-      options: {
-        data: {
-          first_name: authFirstName.trim(),
-          last_name: authLastName.trim(),
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: authEmail.trim(),
+        password: authPassword,
+        options: {
+          data: {
+            first_name: authFirstName.trim(),
+            last_name: authLastName.trim(),
+          },
         },
-      },
-    });
+      });
 
-    if (error) {
+      if (error) {
+        console.error("Errore registrazione:", error);
+
+        setAuthError(error.message);
+        setAuthSubmitting(false);
+
+        return;
+      }
+
+      /*
+       * ============================================================
+       * REGISTRAZIONE COMPLETATA
+       * ============================================================
+       *
+       * Il database crea automaticamente il profilo con:
+       *
+       * role = "pending"
+       *
+       * Un account pending NON deve poter accedere ai calendari.
+       *
+       * Se Supabase ha creato automaticamente una sessione,
+       * la chiudiamo immediatamente.
+       */
+
+      if (data?.session) {
+        await supabase.auth.signOut();
+      }
+
+      setSession(null);
+      setProfile(null);
+
+      setAuthPassword("");
+      setAuthConfirmPassword("");
+
+      setAuthMode("login");
+
+      setAuthError("");
+
+      setAuthMessage(
+        "Registrazione completata. Il tuo account è in attesa dell'approvazione dell'amministratore.",
+      );
+    } catch (error) {
       console.error("Errore registrazione:", error);
 
-      setAuthError(error.message);
+      setAuthError(
+        error?.message || "Si è verificato un errore durante la registrazione.",
+      );
 
+      setAuthMessage("");
+    } finally {
       setAuthSubmitting(false);
-
-      return;
     }
-
-    /*
-     * ============================================================
-     * REGISTRAZIONE COMPLETATA
-     * ============================================================
-     *
-     * Dopo la registrazione l'utente NON deve entrare
-     * nei calendari.
-     *
-     * Il nuovo profilo viene creato con ruolo "pending".
-     * Anche se Supabase crea automaticamente una sessione,
-     * la chiudiamo immediatamente.
-     */
-
-    if (data.session) {
-      await supabase.auth.signOut();
-    }
-
-    setSession(null);
-    setProfile(null);
-
-    setAuthMessage(
-      "Registrazione completata. Il tuo account è in attesa dell'approvazione dell'amministratore.",
-    );
-
-    setAuthError("");
-    setAuthMode("login");
-
-    setAuthPassword("");
-    setAuthConfirmPassword("");
-
-    return;
   };
 
   /*
