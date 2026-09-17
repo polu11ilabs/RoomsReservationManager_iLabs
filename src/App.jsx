@@ -631,31 +631,35 @@ function App() {
     }
 
     /*
-     * Se la conferma email è disabilitata,
-     * Supabase crea direttamente la sessione.
+     * ============================================================
+     * REGISTRAZIONE COMPLETATA
+     * ============================================================
+     *
+     * Dopo la registrazione l'utente NON deve entrare
+     * nei calendari.
+     *
+     * Il nuovo profilo viene creato con ruolo "pending".
+     * Anche se Supabase crea automaticamente una sessione,
+     * la chiudiamo immediatamente.
      */
 
     if (data.session && data.user) {
       await supabase.auth.signOut();
-
-      setAuthMessage(
-        "Registrazione completata. Il tuo account è in attesa di approvazione da parte di un amministratore.",
-      );
-
-      setAuthSubmitting(false);
-
-      return;
     }
 
     /*
-     * Se la conferma email è attiva,
-     * mostriamo il messaggio.
+     * L'utente rimane nella schermata di accesso/registrazione
+     * fino a quando un amministratore non approva l'account.
      */
-
     setAuthMessage(
-      "Registrazione completata. Controlla la tua email per confermare l'account.",
+      "Registrazione completata. Il tuo account è in attesa di approvazione da parte di un amministratore.",
     );
 
+    setAuthError("");
+
+    /*
+     * Pulizia dei campi del modulo.
+     */
     setAuthEmail("");
     setAuthPassword("");
     setAuthConfirmPassword("");
@@ -663,6 +667,8 @@ function App() {
     setAuthLastName("");
 
     setAuthSubmitting(false);
+
+    return;
   };
 
   /*
