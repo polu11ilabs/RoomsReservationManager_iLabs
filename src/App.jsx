@@ -338,7 +338,7 @@ function App() {
   const loadProfile = async (user) => {
     if (!user) {
       setProfile(null);
-      return;
+      return null;
     }
 
     const { data, error } = await supabase
@@ -351,22 +351,21 @@ function App() {
       console.error("Errore caricamento profilo:", error);
 
       setProfile(null);
-      setAuthError("Impossibile caricare il profilo utente.");
 
-      return;
+      return null;
     }
 
     if (!data) {
       console.error("Profilo utente non trovato.");
 
       setProfile(null);
-      setAuthError("Profilo utente non trovato.");
 
-      return;
+      return null;
     }
 
     setProfile(data);
-    setAuthError("");
+
+    return data;
   };
 
   /*
@@ -378,7 +377,130 @@ function App() {
   useEffect(() => {
     let mounted = true;
 
+    const checkAuthenticatedUser = async (currentSession) => {
+      if (!currentSession?.user) {
+        if (mounted) {
+          setSession(null);
+          setProfile(null);
+        }
+
+        return false;
+      }
+
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", currentSession.user.id)
+        .maybeSingle();
+
+      if (!mounted) {
+        return false;
+      }
+
+      if (profileError) {
+        console.error("Errore verifica profilo:", profileError);
+
+        await supabase.auth.signOut();
+
+        if (mounted) {
+          setSession(null);
+          setProfile(null);
+          setAuthError("Impossibile verificare lo stato del tuo account.");
+        }
+
+        return false;
+      }
+
+      if (!profileData) {
+        console.error(
+          "Profilo non trovato per l'utente:",
+          currentSession.user.id,
+        );
+
+        await supabase.auth.signOut();
+
+        if (mounted) {
+          setSession(null);
+          setProfile(null);
+          setAuthError("Il profilo dell'utente non è stato trovato.");
+        }
+
+        return false;
+      }
+
+      console.log("CONTROLLO AUTORIZZAZIONE:", profileData);
+
+      /*
+       * ============================================================
+       * ACCOUNT IN ATTESA
+       * ============================================================
+       */
+
+      if (profileData.role === "pending") {
+        console.log("ACCESSO BLOCCATO: account pending");
+
+        await supabase.auth.signOut();
+
+        if (mounted) {
+          setSession(null);
+          setProfile(null);
+
+          setAuthError("");
+
+          setAuthMessage(
+            "Il tuo account è in attesa di approvazione da parte di un amministratore.",
+          );
+        }
+
+        return false;
+      }
+
+      /*
+       * ============================================================
+       * RUOLO NON AUTORIZZATO
+       * ============================================================
+       */
+
+      if (profileData.role !== "user" && profileData.role !== "admin") {
+        console.log(
+          "ACCESSO BLOCCATO: ruolo non autorizzato:",
+          profileData.role,
+        );
+
+        await supabase.auth.signOut();
+
+        if (mounted) {
+          setSession(null);
+          setProfile(null);
+
+          setAuthMessage("");
+
+          setAuthError("Il tuo account non è ancora abilitato all'accesso.");
+        }
+
+        return false;
+      }
+
+      /*
+       * ============================================================
+       * ACCOUNT APPROVATO
+       * ============================================================
+       */
+
+      if (mounted) {
+        setSession(currentSession);
+        setProfile(profileData);
+        setAuthError("");
+      }
+
+      return true;
+    };
+
     const initializeAuth = async () => {
+      if (mounted) {
+        setAuthLoading(true);
+      }
+
       const {
         data: { session: currentSession },
         error,
@@ -392,36 +514,15 @@ function App() {
         return;
       }
 
-      setSession(currentSession);
+      if (!currentSession?.user) {
+        setSession(null);
+        setProfile(null);
+        setAuthLoading(false);
 
-      if (currentSession?.user) {
-        const { data: profileCheck, error: profileCheckError } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", currentSession.user.id)
-          .maybeSingle();
-
-        if (
-          profileCheckError ||
-          !profileCheck ||
-          (profileCheck.role !== "user" && profileCheck.role !== "admin")
-        ) {
-          await supabase.auth.signOut();
-
-          setSession(null);
-          setProfile(null);
-
-          if (profileCheck?.role === "pending") {
-            setAuthMessage(
-              "Il tuo account è in attesa di approvazione da parte di un amministratore.",
-            );
-          } else {
-            setAuthError("Il tuo account non è ancora abilitato all'accesso.");
-          }
-        } else {
-          setProfile(profileCheck);
-        }
+        return;
       }
+
+      await checkAuthenticatedUser(currentSession);
 
       if (mounted) {
         setAuthLoading(false);
@@ -437,39 +538,23 @@ function App() {
         return;
       }
 
-      setSession(newSession);
+      /*
+       * NON impostiamo subito la sessione.
+       *
+       * Prima verifichiamo il ruolo nel database.
+       */
 
-      if (newSession?.user) {
-        const { data: profileData, error: profileError } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", newSession.user.id)
-          .maybeSingle();
-
-        if (
-          profileError ||
-          !profileData ||
-          (profileData.role !== "user" && profileData.role !== "admin")
-        ) {
-          await supabase.auth.signOut();
-
-          setSession(null);
-          setProfile(null);
-
-          if (profileData?.role === "pending") {
-            setAuthMessage(
-              "Il tuo account è in attesa di approvazione da parte di un amministratore.",
-            );
-          } else {
-            setAuthError("Il tuo account non è ancora abilitato all'accesso.");
-          }
-        } else {
-          setProfile(profileData);
-          setAuthError("");
-        }
-      } else {
+      if (!newSession?.user) {
+        setSession(null);
         setProfile(null);
+        setAuthLoading(false);
+
+        return;
       }
+
+      setAuthLoading(true);
+
+      await checkAuthenticatedUser(newSession);
 
       if (mounted) {
         setAuthLoading(false);
@@ -617,38 +702,94 @@ function App() {
       return;
     }
 
-    if (data.user) {
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", data.user.id)
-        .maybeSingle();
+    if (!data.user) {
+      setAuthError("Impossibile verificare l'utente.");
 
-      if (
-        profileError ||
-        !profileData ||
-        (profileData.role !== "user" && profileData.role !== "admin")
-      ) {
-        await supabase.auth.signOut();
+      setAuthSubmitting(false);
 
-        setSession(null);
-        setProfile(null);
-
-        if (profileData?.role === "pending") {
-          setAuthMessage(
-            "Il tuo account è in attesa di approvazione da parte di un amministratore.",
-          );
-        } else {
-          setAuthError("Il tuo account non è ancora abilitato all'accesso.");
-        }
-
-        setAuthSubmitting(false);
-
-        return;
-      }
-
-      setProfile(profileData);
+      return;
     }
+
+    /*
+     * ============================================================
+     * VERIFICA PROFILO
+     * ============================================================
+     */
+
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", data.user.id)
+      .maybeSingle();
+
+    if (profileError || !profileData) {
+      console.error("Errore verifica profilo:", profileError);
+
+      await supabase.auth.signOut();
+
+      setSession(null);
+      setProfile(null);
+
+      setAuthError("Impossibile verificare lo stato del tuo account.");
+
+      setAuthSubmitting(false);
+
+      return;
+    }
+
+    console.log("RUOLO UTENTE DOPO LOGIN:", profileData.role);
+
+    /*
+     * ============================================================
+     * PENDING
+     * ============================================================
+     */
+
+    if (profileData.role === "pending") {
+      await supabase.auth.signOut();
+
+      setSession(null);
+      setProfile(null);
+
+      setAuthMessage(
+        "Il tuo account è in attesa di approvazione da parte di un amministratore.",
+      );
+
+      setAuthSubmitting(false);
+
+      return;
+    }
+
+    /*
+     * ============================================================
+     * RUOLO NON VALIDO
+     * ============================================================
+     */
+
+    if (profileData.role !== "user" && profileData.role !== "admin") {
+      await supabase.auth.signOut();
+
+      setSession(null);
+      setProfile(null);
+
+      setAuthError("Il tuo account non è ancora abilitato all'accesso.");
+
+      setAuthSubmitting(false);
+
+      return;
+    }
+
+    /*
+     * ============================================================
+     * ACCESSO CONSENTITO
+     * ============================================================
+     */
+
+    setSession(data.session);
+    setProfile(profileData);
+
+    setAuthError("");
+    setAuthMessage("");
 
     setAuthSubmitting(false);
   };
