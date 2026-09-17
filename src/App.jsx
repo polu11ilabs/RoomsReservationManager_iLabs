@@ -3063,7 +3063,7 @@ function App() {
       );
     }
 
-    return (
+        return (
       <div
         style={{
           minHeight: "100vh",
@@ -3075,6 +3075,16 @@ function App() {
           fontFamily: "Arial, sans-serif",
         }}
       >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "460px",
+            background: "#ffffff",
+            borderRadius: "18px",
+            padding: "38px",
+            boxShadow: "0 15px 45px rgba(0, 0, 0, 0.08)",
+          }}
+        >
           <div
             style={{
               fontSize: "28px",
