@@ -3064,6 +3064,24 @@ function App() {
     }
 
         return (
+                    <button
+            type="button"
+            onClick={() => { window.__showLogin = false; window.dispatchEvent(new Event("showlogin")); }}
+            style={{
+              alignSelf: "flex-start",
+              marginBottom: "20px",
+              padding: "8px 14px",
+              border: "1px solid #dfe3e9",
+              borderRadius: "8px",
+              background: "white",
+              color: "#4b5563",
+              fontSize: "13px",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            ← Indietro
+          </button>
       <div
         style={{
           minHeight: "100vh",
