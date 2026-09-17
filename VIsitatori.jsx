@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
-import "./index.css";
+import "./Visitatori.css";
 
 /*
  * ============================================================
@@ -373,7 +373,7 @@ const computeBookingBlockHeight = (booking, rowHeights) => {
  * ============================================================
  */
 
-function App() {
+function Visitatori() {
   /*
    * ------------------------------------------------------------
    * STATO
@@ -1209,4 +1209,4 @@ function App() {
   );
 }
 
-export default App;
+export default Visitatori;
