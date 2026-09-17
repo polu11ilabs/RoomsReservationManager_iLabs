@@ -2966,6 +2966,33 @@ function App() {
    * SCHERMATA LOGIN / REGISTRAZIONE
    * ============================================================
    */
+  
+  if (authLoading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#f6f7f9",
+          fontFamily: "Arial, sans-serif",
+        }}
+      >
+        <div
+          style={{
+            padding: "30px",
+            textAlign: "center",
+            color: "#7b8495",
+            fontSize: "18px",
+            fontWeight: 600,
+          }}
+        >
+          Caricamento...
+        </div>
+      </div>
+    );
+  }
 
   if (session && profile && profile.role === "pending") {
     return (
@@ -3017,33 +3044,6 @@ function App() {
           >
             Esci
           </button>
-        </div>
-      </div>
-    );
-  }
-  
-  if (authLoading) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#f6f7f9",
-          fontFamily: "Arial, sans-serif",
-        }}
-      >
-        <div
-          style={{
-            padding: "30px",
-            textAlign: "center",
-            color: "#7b8495",
-            fontSize: "18px",
-            fontWeight: 600,
-          }}
-        >
-          Caricamento...
         </div>
       </div>
     );
