@@ -325,12 +325,11 @@ function App() {
   const [editRoomColor, setEditRoomColor] = useState("#2563eb");
   const [savingRoom, setSavingRoom] = useState(false);
 
-    useEffect(() => {
+  useEffect(() => {
     const handler = () => forceMinuteTick((t) => t + 1);
     window.addEventListener("showlogin", handler);
     return () => window.removeEventListener("showlogin", handler);
   }, []);
-
 
   /*
    * Recupero il profilo dell'utente autenticato.
@@ -396,18 +395,31 @@ function App() {
       setSession(currentSession);
 
       if (currentSession?.user) {
-        await loadProfile(currentSession.user);
-
-        const { data: profileCheck } = await supabase
+        const { data: profileCheck, error: profileCheckError } = await supabase
           .from("profiles")
-          .select("role")
+          .select("*")
           .eq("id", currentSession.user.id)
           .maybeSingle();
 
-        if (profileCheck?.role === "pending") {
+        if (
+          profileCheckError ||
+          !profileCheck ||
+          (profileCheck.role !== "user" && profileCheck.role !== "admin")
+        ) {
           await supabase.auth.signOut();
+
           setSession(null);
           setProfile(null);
+
+          if (profileCheck?.role === "pending") {
+            setAuthMessage(
+              "Il tuo account è in attesa di approvazione da parte di un amministratore.",
+            );
+          } else {
+            setAuthError("Il tuo account non è ancora abilitato all'accesso.");
+          }
+        } else {
+          setProfile(profileCheck);
         }
       }
 
@@ -428,7 +440,33 @@ function App() {
       setSession(newSession);
 
       if (newSession?.user) {
-        await loadProfile(newSession.user);
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", newSession.user.id)
+          .maybeSingle();
+
+        if (
+          profileError ||
+          !profileData ||
+          (profileData.role !== "user" && profileData.role !== "admin")
+        ) {
+          await supabase.auth.signOut();
+
+          setSession(null);
+          setProfile(null);
+
+          if (profileData?.role === "pending") {
+            setAuthMessage(
+              "Il tuo account è in attesa di approvazione da parte di un amministratore.",
+            );
+          } else {
+            setAuthError("Il tuo account non è ancora abilitato all'accesso.");
+          }
+        } else {
+          setProfile(profileData);
+          setAuthError("");
+        }
       } else {
         setProfile(null);
       }
@@ -512,7 +550,7 @@ function App() {
      * Supabase crea direttamente la sessione.
      */
 
-        if (data.session && data.user) {
+    if (data.session && data.user) {
       await supabase.auth.signOut();
 
       setAuthMessage(
@@ -580,25 +618,39 @@ function App() {
     }
 
     if (data.user) {
-      await loadProfile(data.user);
-
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("role")
+        .select("*")
         .eq("id", data.user.id)
         .maybeSingle();
 
-      if (profileData?.role === "pending") {
+      if (
+        profileError ||
+        !profileData ||
+        (profileData.role !== "user" && profileData.role !== "admin")
+      ) {
         await supabase.auth.signOut();
+
         setSession(null);
         setProfile(null);
-        setAuthMessage(
-          "Il tuo account è in attesa di approvazione da parte di un amministratore.",
-        );
+
+        if (profileData?.role === "pending") {
+          setAuthMessage(
+            "Il tuo account è in attesa di approvazione da parte di un amministratore.",
+          );
+        } else {
+          setAuthError("Il tuo account non è ancora abilitato all'accesso.");
+        }
+
         setAuthSubmitting(false);
+
         return;
       }
+
+      setProfile(profileData);
     }
+
+    setAuthSubmitting(false);
   };
 
   /*
@@ -653,14 +705,16 @@ function App() {
    */
 
   const currentUser =
-    session?.user && profile
+    session?.user &&
+    profile &&
+    (profile.role === "user" || profile.role === "admin")
       ? {
           id: session.user.id,
           name:
             profile.first_name || profile.last_name
               ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim()
               : session.user.email || "Utente",
-          role: profile.role || "user",
+          role: profile.role,
         }
       : null;
 
@@ -2024,13 +2078,13 @@ function App() {
         const unavailableStart = new Date(period.start_at);
 
         if (!period.end_at) {
-          return newBookingEnd > unavailableStart;
+          return requestedEnd > unavailableStart;
         }
 
         const unavailableEnd = new Date(period.end_at);
 
         return (
-          newBookingStart < unavailableEnd && newBookingEnd > unavailableStart
+          requestedStart < unavailableEnd && requestedEnd > unavailableStart
         );
       },
     );
@@ -2995,7 +3049,7 @@ function App() {
    * SCHERMATA LOGIN / REGISTRAZIONE
    * ============================================================
    */
-  
+
   if (authLoading) {
     return (
       <div
@@ -3047,15 +3101,32 @@ function App() {
             textAlign: "center",
           }}
         >
-          <div style={{ fontSize: "28px", fontWeight: 800, color: "#111827", marginBottom: "12px" }}>
+          <div
+            style={{
+              fontSize: "28px",
+              fontWeight: 800,
+              color: "#111827",
+              marginBottom: "12px",
+            }}
+          >
             I-LABS
           </div>
           <div style={{ fontSize: "48px", marginBottom: "16px" }}>⏳</div>
-          <h2 style={{ margin: "0 0 12px", fontSize: "20px", color: "#111827" }}>
+          <h2
+            style={{ margin: "0 0 12px", fontSize: "20px", color: "#111827" }}
+          >
             Account in attesa di approvazione
           </h2>
-          <p style={{ color: "#7b8495", fontSize: "14px", lineHeight: 1.6, margin: "0 0 24px" }}>
-            La tua registrazione è stata ricevuta. Un amministratore deve approvare il tuo account prima che tu possa accedere.
+          <p
+            style={{
+              color: "#7b8495",
+              fontSize: "14px",
+              lineHeight: 1.6,
+              margin: "0 0 24px",
+            }}
+          >
+            La tua registrazione è stata ricevuta. Un amministratore deve
+            approvare il tuo account prima che tu possa accedere.
           </p>
           <button
             type="button"
@@ -3102,15 +3173,34 @@ function App() {
               gap: "16px",
             }}
           >
-            <div style={{ fontSize: "32px", fontWeight: 900, color: "white", letterSpacing: "-1px", marginBottom: "8px" }}>
+            <div
+              style={{
+                fontSize: "32px",
+                fontWeight: 900,
+                color: "white",
+                letterSpacing: "-1px",
+                marginBottom: "8px",
+              }}
+            >
               I-LABS
             </div>
-            <div style={{ color: "#8f9bad", fontSize: "13px", fontWeight: 700, letterSpacing: "1.5px", marginBottom: "24px" }}>
+            <div
+              style={{
+                color: "#8f9bad",
+                fontSize: "13px",
+                fontWeight: 700,
+                letterSpacing: "1.5px",
+                marginBottom: "24px",
+              }}
+            >
               PRENOTAZIONE SALE
             </div>
             <button
               type="button"
-              onClick={() => { window.__showLogin = true; window.dispatchEvent(new Event("showlogin")); }}
+              onClick={() => {
+                window.__showLogin = true;
+                window.dispatchEvent(new Event("showlogin"));
+              }}
               style={{
                 width: "100%",
                 padding: "16px",
@@ -3127,7 +3217,7 @@ function App() {
             </button>
             <button
               type="button"
-              onClick={() => window.location.href = "/visitatori"}
+              onClick={() => (window.location.href = "/visitatori")}
               style={{
                 width: "100%",
                 padding: "16px",
@@ -3147,7 +3237,7 @@ function App() {
       );
     }
 
-            return (
+    return (
       <div
         style={{
           minHeight: "100vh",
@@ -3171,7 +3261,10 @@ function App() {
         >
           <button
             type="button"
-            onClick={() => { window.__showLogin = false; window.dispatchEvent(new Event("showlogin")); }}
+            onClick={() => {
+              window.__showLogin = false;
+              window.dispatchEvent(new Event("showlogin"));
+            }}
             style={{
               marginBottom: "20px",
               padding: "8px 14px",
@@ -4787,7 +4880,13 @@ function App() {
             </div>
 
             {users.filter((u) => u.role === "pending").length === 0 ? (
-              <div style={{ padding: "20px", color: "#7b8495", textAlign: "center" }}>
+              <div
+                style={{
+                  padding: "20px",
+                  color: "#7b8495",
+                  textAlign: "center",
+                }}
+              >
                 Nessun account in attesa di approvazione.
               </div>
             ) : (
@@ -4807,8 +4906,12 @@ function App() {
                       }}
                     >
                       <div>
-                        <strong>{user.first_name} {user.last_name}</strong>
-                        <div style={{ marginTop: "4px", color: "#666" }}>{user.email}</div>
+                        <strong>
+                          {user.first_name} {user.last_name}
+                        </strong>
+                        <div style={{ marginTop: "4px", color: "#666" }}>
+                          {user.email}
+                        </div>
                       </div>
 
                       <div style={{ display: "flex", gap: "10px" }}>
@@ -4850,7 +4953,7 @@ function App() {
             )}
           </section>
         )}
-        
+
         {isAdmin && (
           <section className="rooms-section">
             <div className="section-heading">
@@ -4869,85 +4972,87 @@ function App() {
               <p>Nessun utente trovato.</p>
             ) : (
               <div>
-                              {users.filter((u) => u.role !== "pending").map((user) => (
-                  <div
-                    key={user.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: "20px",
-                      padding: "14px 0",
-                      borderBottom: "1px solid #e5e7eb",
-                    }}
-                  >
-                    <div>
-                      <strong>
-                        {user.first_name} {user.last_name}
-                      </strong>
-
-                      <div
-                        style={{
-                          marginTop: "4px",
-                          color: "#666",
-                        }}
-                      >
-                        {user.email}
-                      </div>
-                    </div>
-
+                {users
+                  .filter((u) => u.role !== "pending")
+                  .map((user) => (
                     <div
+                      key={user.id}
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: "10px",
+                        justifyContent: "space-between",
+                        gap: "20px",
+                        padding: "14px 0",
+                        borderBottom: "1px solid #e5e7eb",
                       }}
                     >
-                      <select
-                        value={user.role}
-                        disabled={user.id === currentUser.id}
-                        onChange={(event) =>
-                          changeUserRole(user.id, event.target.value)
-                        }
-                        className="admin-role-select"
-                      >
-                        <option value="user">Utente</option>
-                        <option value="admin">Amministratore</option>
-                      </select>
+                      <div>
+                        <strong>
+                          {user.first_name} {user.last_name}
+                        </strong>
 
-                      {user.id === currentUser.id ? (
-                        <span
+                        <div
                           style={{
-                            fontSize: "13px",
-                            color: "#777",
+                            marginTop: "4px",
+                            color: "#666",
                           }}
                         >
-                          Tu
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            console.log("CLICK ELIMINA");
-                            console.log("ID UTENTE:", user.id);
-                            deleteUserAccount(user.id);
-                          }}
-                          style={{
-                            padding: "7px 12px",
-                            border: "1px solid #dc2626",
-                            borderRadius: "6px",
-                            background: "#fff",
-                            color: "#dc2626",
-                            cursor: "pointer",
-                            fontWeight: "600",
-                          }}
+                          {user.email}
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                        }}
+                      >
+                        <select
+                          value={user.role}
+                          disabled={user.id === currentUser.id}
+                          onChange={(event) =>
+                            changeUserRole(user.id, event.target.value)
+                          }
+                          className="admin-role-select"
                         >
-                          Elimina
-                        </button>
-                      )}
+                          <option value="user">Utente</option>
+                          <option value="admin">Amministratore</option>
+                        </select>
+
+                        {user.id === currentUser.id ? (
+                          <span
+                            style={{
+                              fontSize: "13px",
+                              color: "#777",
+                            }}
+                          >
+                            Tu
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              console.log("CLICK ELIMINA");
+                              console.log("ID UTENTE:", user.id);
+                              deleteUserAccount(user.id);
+                            }}
+                            style={{
+                              padding: "7px 12px",
+                              border: "1px solid #dc2626",
+                              borderRadius: "6px",
+                              background: "#fff",
+                              color: "#dc2626",
+                              cursor: "pointer",
+                              fontWeight: "600",
+                            }}
+                          >
+                            Elimina
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </section>
