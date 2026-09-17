@@ -397,8 +397,18 @@ function App() {
 
       if (currentSession?.user) {
         await loadProfile(currentSession.user);
-      } else {
-        setProfile(null);
+
+        const { data: profileCheck } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", currentSession.user.id)
+          .maybeSingle();
+
+        if (profileCheck?.role === "pending") {
+          await supabase.auth.signOut();
+          setSession(null);
+          setProfile(null);
+        }
       }
 
       if (mounted) {
@@ -571,9 +581,24 @@ function App() {
 
     if (data.user) {
       await loadProfile(data.user);
-    }
 
-    setAuthSubmitting(false);
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", data.user.id)
+        .maybeSingle();
+
+      if (profileData?.role === "pending") {
+        await supabase.auth.signOut();
+        setSession(null);
+        setProfile(null);
+        setAuthMessage(
+          "Il tuo account è in attesa di approvazione da parte di un amministratore.",
+        );
+        setAuthSubmitting(false);
+        return;
+      }
+    }
   };
 
   /*
