@@ -3870,9 +3870,41 @@ function App() {
    * Solo gli utenti con ruolo user o admin possono vedere
    * il calendario interno.
    */
+  if (authLoading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#f4f6f9",
+        }}
+      >
+        <div
+          style={{
+            padding: "30px",
+            borderRadius: "16px",
+            background: "#ffffff",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{ fontSize: "18px", fontWeight: 700, marginBottom: "8px" }}
+          >
+            Caricamento...
+          </div>
+          <div style={{ fontSize: "14px", color: "#64748b" }}>
+            Verifica dell'account in corso
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (
     currentPath === "/Utenti" &&
-    !authLoading &&
     (!session ||
       !profile ||
       (profile.role !== "user" && profile.role !== "admin"))
