@@ -3532,6 +3532,7 @@ function App() {
 
               <button
                 type="button"
+                onClick={() => navigateTo("/Visitatori")}
                 style={{
                   width: "100%",
                   marginTop: "12px",
