@@ -244,40 +244,40 @@ const estimateBookingContentHeight = (booking) => {
   return BOOKING_BASE_HEIGHT + 5 + lines * REASON_LINE_HEIGHT;
 };
 
-const computeBookingBlockOffset = (booking, rowHeights) => {
-  const startMinutes = timeToMinutes(booking.start);
-  const startHour = Math.floor(startMinutes / 60);
-  const minutesIntoHour = startMinutes % 60;
-  const rowIndex = startHour - 8;
-  const rowHeight = rowHeights[rowIndex] ?? ROW_DEFAULT_HEIGHT;
-
-  return (minutesIntoHour / 60) * rowHeight;
-};
-
-const computeBookingBlockHeight = (booking, rowHeights) => {
-  const startMinutes = timeToMinutes(booking.start);
-  const endMinutes = timeToMinutes(booking.end);
-  const startHour = Math.floor(startMinutes / 60);
-  const endHourExclusive = Math.ceil(endMinutes / 60);
-
-  let total = 0;
-
-  for (let hour = startHour; hour < endHourExclusive; hour += 1) {
-    const rowIndex = hour - 8;
-    const rowHeight = rowHeights[rowIndex] ?? ROW_DEFAULT_HEIGHT;
-    const hourStart = hour * 60;
-    const hourEnd = (hour + 1) * 60;
-    const overlapStart = Math.max(startMinutes, hourStart);
-    const overlapEnd = Math.min(endMinutes, hourEnd);
-    const fraction = (overlapEnd - overlapStart) / 60;
-
-    total += rowHeight * fraction;
-  }
-
-  return Math.max(20, total); // ← rimosso il - 8
-};
-
 function App() {
+  const computeBookingBlockOffset = (booking, rowHeights) => {
+    const startMinutes = timeToMinutes(booking.start);
+    const startHour = Math.floor(startMinutes / 60);
+    const minutesIntoHour = startMinutes % 60;
+    const rowIndex = startHour - 8;
+    const rowHeight = rowHeights[rowIndex] ?? ROW_DEFAULT_HEIGHT;
+
+    return (minutesIntoHour / 60) * rowHeight;
+  };
+
+  const computeBookingBlockHeight = (booking, rowHeights) => {
+    const startMinutes = timeToMinutes(booking.start);
+    const endMinutes = timeToMinutes(booking.end);
+    const startHour = Math.floor(startMinutes / 60);
+    const endHourExclusive = Math.ceil(endMinutes / 60);
+
+    let total = 0;
+
+    for (let hour = startHour; hour < endHourExclusive; hour += 1) {
+      const rowIndex = hour - 8;
+      const rowHeight = rowHeights[rowIndex] ?? ROW_DEFAULT_HEIGHT;
+      const hourStart = hour * 60;
+      const hourEnd = (hour + 1) * 60;
+      const overlapStart = Math.max(startMinutes, hourStart);
+      const overlapEnd = Math.min(endMinutes, hourEnd);
+      const fraction = (overlapEnd - overlapStart) / 60;
+
+      total += rowHeight * fraction;
+    }
+
+    return Math.max(20, total); // ← rimosso il - 8
+  };
+
   /*
    * ============================================================
    * AUTENTICAZIONE
