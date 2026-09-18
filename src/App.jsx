@@ -1768,9 +1768,8 @@ function App() {
     }
 
     setLoadingRooms(true);
-
     loadData();
-  }, [session?.user?.id, profile?.id, currentPath]);
+  }, [session?.user?.id, profile?.id, currentPath]); // eslint-disable-line
 
   /*
    * ============================================================
@@ -1824,6 +1823,13 @@ function App() {
       supabase.removeChannel(channel);
     };
   }, [session?.user?.id, profile?.id]);
+
+  useEffect(() => {
+    if (currentPath === "/Visitatori" && !session?.user) {
+      setLoadingRooms(true);
+      loadData();
+    }
+  }, [currentPath]);
 
   /*
    * ============================================================
