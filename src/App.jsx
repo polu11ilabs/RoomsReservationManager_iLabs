@@ -3393,11 +3393,34 @@ function App() {
      * con un ruolo valido, lo mandiamo ai calendari.
      */
     if (
+      currentPath === "/Autenticazione" &&
       session &&
       profile &&
       (profile.role === "user" || profile.role === "admin")
     ) {
-      return null;
+      return (
+        <div
+          style={{
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#f4f6f9",
+            fontFamily:
+              'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          }}
+        >
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: "18px", fontWeight: 600 }}>
+              Accesso già effettuato
+            </div>
+
+            <div style={{ marginTop: "8px", color: "#64748b" }}>
+              Reindirizzamento...
+            </div>
+          </div>
+        </div>
+      );
     }
 
     /*
