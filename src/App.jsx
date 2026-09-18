@@ -554,9 +554,10 @@ function App() {
     const isPending = !!session && !!profile && profile.role === "pending";
 
     /*
-     * USER / ADMIN
-     * Se sono nella pagina di autenticazione,
-     * vengono portati ai calendari.
+     * UTENTE AUTORIZZATO
+     *
+     * Se prova ad aprire /Autenticazione,
+     * viene portato al calendario.
      */
     if (currentPath === "/Autenticazione" && isAuthorized) {
       window.history.replaceState({}, "", "/Utenti");
@@ -565,8 +566,9 @@ function App() {
     }
 
     /*
-     * PENDING
-     * Non può entrare nei calendari.
+     * UTENTE NON AUTORIZZATO
+     *
+     * Solo user e admin possono entrare in /Utenti.
      */
     if (currentPath === "/Utenti" && !isAuthorized) {
       window.history.replaceState({}, "", "/Autenticazione");
@@ -575,12 +577,21 @@ function App() {
     }
 
     /*
-     * Nessuna sessione:
-     * non può accedere ai calendari.
+     * ACCOUNT PENDING
+     *
+     * Il pending può rimanere in /Autenticazione.
      */
-    if (currentPath === "/Utenti" && !session) {
-      window.history.replaceState({}, "", "/Autenticazione");
-      setCurrentPath("/Autenticazione");
+    if (currentPath === "/Autenticazione" && isPending) {
+      return;
+    }
+
+    /*
+     * VISITATORI
+     *
+     * /Visitatori è accessibile senza autenticazione.
+     */
+    if (currentPath === "/Visitatori") {
+      return;
     }
   }, [authLoading, currentPath, session, profile]);
 
@@ -895,19 +906,6 @@ function App() {
       : null;
 
   const isAdmin = currentUser?.role === "admin";
-
-  useEffect(() => {
-    if (authLoading) return;
-
-    if (
-      currentPath === "/Autenticazione" &&
-      session &&
-      profile &&
-      (profile.role === "user" || profile.role === "admin")
-    ) {
-      navigateTo("/Utenti");
-    }
-  }, [authLoading, currentPath, session, profile]);
 
   /*
    * ============================================================
@@ -4009,55 +4007,45 @@ function App() {
 
                 let neededHeight = ROW_DEFAULT_HEIGHT;
 
-                const rowHeights = Array.from({ length: 10 }, (_, index) => {
-                  const hour = index + 8;
+                weekDays.forEach((date) => {
+                  const dateKey = formatDateKey(date);
 
-                  let neededHeight = ROW_DEFAULT_HEIGHT;
+                  const bookingsInCell = room.bookings.filter((item) => {
+                    if (item.day !== dateKey) {
+                      return false;
+                    }
 
-                  weekDays.forEach((date) => {
-                    const dateKey = formatDateKey(date);
+                    const start = timeToMinutes(item.start);
 
-                    const bookingsInCell = room.bookings.filter((item) => {
-                      if (item.day !== dateKey) {
-                        return false;
-                      }
-
-                      const start = timeToMinutes(item.start);
-
-                      return start >= hour * 60 && start < (hour + 1) * 60;
-                    });
-
-                    bookingsInCell.forEach((booking) => {
-                      const duration =
-                        timeToMinutes(booking.end) -
-                        timeToMinutes(booking.start);
-
-                      if (duration > 60) {
-                        return;
-                      }
-
-                      const measured = measuredBookingHeights[booking.id];
-
-                      const contentHeight = measured
-                        ? measured + 8
-                        : estimateBookingContentHeight(booking) + 8;
-
-                      const startMinutes = timeToMinutes(booking.start);
-
-                      const minutesIntoHour = startMinutes % 60;
-
-                      const offset =
-                        (minutesIntoHour / 60) * ROW_DEFAULT_HEIGHT;
-
-                      const requiredHeight = offset + contentHeight;
-
-                      if (requiredHeight > neededHeight) {
-                        neededHeight = requiredHeight;
-                      }
-                    });
+                    return start >= hour * 60 && start < (hour + 1) * 60;
                   });
 
-                  return neededHeight;
+                  bookingsInCell.forEach((booking) => {
+                    const duration =
+                      timeToMinutes(booking.end) - timeToMinutes(booking.start);
+
+                    if (duration > 60) {
+                      return;
+                    }
+
+                    const measured = measuredBookingHeights[booking.id];
+
+                    const contentHeight = measured
+                      ? measured + 8
+                      : estimateBookingContentHeight(booking) + 8;
+
+                    const startMinutes = timeToMinutes(booking.start);
+
+                    const minutesIntoHour = startMinutes % 60;
+
+                    const offset = (minutesIntoHour / 60) * ROW_DEFAULT_HEIGHT;
+
+                    const requiredHeight = offset + contentHeight;
+
+                    if (requiredHeight > neededHeight) {
+                      neededHeight = requiredHeight;
+                    }
+                  });
                 });
 
                 return neededHeight;
