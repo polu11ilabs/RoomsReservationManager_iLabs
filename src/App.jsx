@@ -3865,6 +3865,7 @@ function App() {
    */
   if (
     currentPath === "/Utenti" &&
+    !authLoading &&
     (!session ||
       !profile ||
       (profile.role !== "user" && profile.role !== "admin"))
