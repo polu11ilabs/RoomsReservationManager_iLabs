@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import Visitatori from "./Visitatori";
 import DatePicker from "react-datepicker";
 import { supabase } from "./supabaseClient";
 import { it } from "date-fns/locale";
@@ -298,6 +299,49 @@ function App() {
   const [profile, setProfile] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
+  /*
+   * ============================================================
+   * GESTIONE PAGINE
+   * ============================================================
+   */
+
+  const getCurrentPath = () => {
+    const path = window.location.pathname.toLowerCase();
+
+    if (path === "/utenti" || path === "/utenti/") {
+      return "/Utenti";
+    }
+
+    if (path === "/autenticazione" || path === "/autenticazione/") {
+      return "/Autenticazione";
+    }
+
+    if (path === "/visitatori" || path === "/visitatori/") {
+      return "/Visitatori";
+    }
+
+    return "/Autenticazione";
+  };
+
+  const [currentPath, setCurrentPath] = useState(getCurrentPath);
+
+  const navigateTo = (path) => {
+    window.history.pushState({}, "", path);
+    setCurrentPath(path);
+  };
+
+  const handleBrowserNavigation = () => {
+    setCurrentPath(getCurrentPath());
+  };
+
+  useEffect(() => {
+    window.addEventListener("popstate", handleBrowserNavigation);
+
+    return () => {
+      window.removeEventListener("popstate", handleBrowserNavigation);
+    };
+  }, []);
+
   const [authMode, setAuthMode] = useState("login");
 
   const [authEmail, setAuthEmail] = useState("");
@@ -393,22 +437,36 @@ function App() {
           setProfile(null);
           setAuthLoading(false);
 
+          navigateTo("/Autenticazione");
+
           return;
         }
 
         /*
-         * Nessun utente autenticato.
+         * ============================================================
+         * NESSUNA SESSIONE
+         * ============================================================
          */
         if (!currentSession?.user) {
           setSession(null);
           setProfile(null);
           setAuthLoading(false);
 
+          /*
+           * Un utente non autenticato non può entrare in /Utenti.
+           * Può invece accedere a /Autenticazione e /Visitatori.
+           */
+          if (getCurrentPath() === "/Utenti") {
+            navigateTo("/Autenticazione");
+          }
+
           return;
         }
 
         /*
-         * Recuperiamo il profilo dell'utente.
+         * ============================================================
+         * CARICAMENTO PROFILO
+         * ============================================================
          */
         const { data: userProfile, error: profileError } = await supabase
           .from("profiles")
@@ -427,6 +485,8 @@ function App() {
           setProfile(null);
           setAuthLoading(false);
 
+          navigateTo("/Autenticazione");
+
           return;
         }
 
@@ -437,14 +497,17 @@ function App() {
          * ACCOUNT PENDING
          * ============================================================
          *
-         * Non può accedere ai calendari.
+         * Il pending può stare su /Autenticazione e /Visitatori,
+         * ma NON può accedere a /Utenti.
          */
         if (userProfile.role === "pending") {
-          setSession(null);
-          setProfile(null);
+          setSession(currentSession);
+          setProfile(userProfile);
           setAuthLoading(false);
 
-          await supabase.auth.signOut();
+          if (getCurrentPath() === "/Utenti") {
+            navigateTo("/Autenticazione");
+          }
 
           return;
         }
@@ -455,15 +518,27 @@ function App() {
          * ============================================================
          */
         if (userProfile.role === "user" || userProfile.role === "admin") {
-          setProfile(userProfile);
           setSession(currentSession);
+          setProfile(userProfile);
           setAuthLoading(false);
+
+          /*
+           * Se l'utente autenticato apre /Autenticazione,
+           * viene portato automaticamente ai calendari.
+           *
+           * /Visitatori rimane invece accessibile.
+           */
+          if (getCurrentPath() === "/Autenticazione") {
+            navigateTo("/Utenti");
+          }
 
           return;
         }
 
         /*
-         * Ruolo non valido.
+         * ============================================================
+         * RUOLO NON VALIDO
+         * ============================================================
          */
         console.error("Ruolo non valido:", userProfile.role);
 
@@ -472,6 +547,8 @@ function App() {
         setSession(null);
         setProfile(null);
         setAuthLoading(false);
+
+        navigateTo("/Autenticazione");
       } catch (error) {
         console.error("Errore inizializzazione autenticazione:", error);
 
@@ -480,6 +557,8 @@ function App() {
         setSession(null);
         setProfile(null);
         setAuthLoading(false);
+
+        navigateTo("/Autenticazione");
       }
     };
 
@@ -503,16 +582,13 @@ function App() {
         setProfile(null);
         setAuthLoading(false);
 
+        navigateTo("/Autenticazione");
+
         return;
       }
 
       /*
-       * Per SIGNED_IN non facciamo un'altra verifica
-       * immediata qui perché handleLogin() verifica già
-       * il profilo e imposta session/profile.
-       *
-       * In questo modo evitiamo il caricamento infinito
-       * e le verifiche duplicate.
+       * Aggiornamento del token.
        */
       if (event === "TOKEN_REFRESHED" && currentSession) {
         setSession(currentSession);
@@ -655,111 +731,122 @@ function App() {
 
     setAuthSubmitting(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: authEmail.trim(),
-      password: authPassword,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: authEmail.trim(),
+        password: authPassword,
+      });
 
-    if (error) {
+      if (error) {
+        console.error("Errore login:", error);
+
+        setAuthError("Email o password non corretti.");
+        setAuthSubmitting(false);
+
+        return;
+      }
+
+      if (!data.user) {
+        setAuthError("Impossibile verificare l'utente.");
+        setAuthSubmitting(false);
+
+        return;
+      }
+
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", data.user.id)
+        .maybeSingle();
+
+      if (profileError || !profileData) {
+        console.error("Errore verifica profilo:", profileError);
+
+        await supabase.auth.signOut();
+
+        setSession(null);
+        setProfile(null);
+
+        setAuthError("Impossibile verificare lo stato del tuo account.");
+
+        setAuthSubmitting(false);
+
+        return;
+      }
+
+      console.log("RUOLO UTENTE DOPO LOGIN:", profileData.role);
+
+      /*
+       * ============================================================
+       * ACCOUNT PENDING
+       * ============================================================
+       *
+       * Il login viene effettuato, ma l'utente NON viene mandato
+       * nella pagina /Utenti.
+       *
+       * Rimane nella pagina /Autenticazione e vede il messaggio
+       * di attesa approvazione.
+       */
+      if (profileData.role === "pending") {
+        setSession(data.session);
+        setProfile(profileData);
+
+        setAuthError("");
+
+        setAuthMessage(
+          "Il tuo account è in attesa di approvazione da parte di un amministratore.",
+        );
+
+        setAuthSubmitting(false);
+
+        navigateTo("/Autenticazione");
+
+        return;
+      }
+
+      /*
+       * ============================================================
+       * ACCOUNT NON VALIDO
+       * ============================================================
+       */
+      if (profileData.role !== "user" && profileData.role !== "admin") {
+        await supabase.auth.signOut();
+
+        setSession(null);
+        setProfile(null);
+
+        setAuthError("Il tuo account non è ancora abilitato all'accesso.");
+
+        setAuthSubmitting(false);
+
+        navigateTo("/Autenticazione");
+
+        return;
+      }
+
+      /*
+       * ============================================================
+       * USER / ADMIN
+       * ============================================================
+       */
+      setSession(data.session);
+      setProfile(profileData);
+
+      setAuthError("");
+      setAuthMessage("");
+
+      setAuthSubmitting(false);
+
+      navigateTo("/Utenti");
+    } catch (error) {
       console.error("Errore login:", error);
 
-      setAuthError("Email o password non corretti.");
-
-      setAuthSubmitting(false);
-
-      return;
-    }
-
-    if (!data.user) {
-      setAuthError("Impossibile verificare l'utente.");
-
-      setAuthSubmitting(false);
-
-      return;
-    }
-
-    /*
-     * ============================================================
-     * VERIFICA PROFILO
-     * ============================================================
-     */
-
-    const { data: profileData, error: profileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", data.user.id)
-      .maybeSingle();
-
-    if (profileError || !profileData) {
-      console.error("Errore verifica profilo:", profileError);
-
-      await supabase.auth.signOut();
-
-      setSession(null);
-      setProfile(null);
-
-      setAuthError("Impossibile verificare lo stato del tuo account.");
-
-      setAuthSubmitting(false);
-
-      return;
-    }
-
-    console.log("RUOLO UTENTE DOPO LOGIN:", profileData.role);
-
-    /*
-     * ============================================================
-     * PENDING
-     * ============================================================
-     */
-
-    if (profileData.role === "pending") {
-      await supabase.auth.signOut();
-
-      setSession(null);
-      setProfile(null);
-
-      setAuthMessage(
-        "Il tuo account è in attesa di approvazione da parte di un amministratore.",
+      setAuthError(
+        error?.message || "Si è verificato un errore durante il login.",
       );
 
       setAuthSubmitting(false);
-
-      return;
     }
-
-    /*
-     * ============================================================
-     * RUOLO NON VALIDO
-     * ============================================================
-     */
-
-    if (profileData.role !== "user" && profileData.role !== "admin") {
-      await supabase.auth.signOut();
-
-      setSession(null);
-      setProfile(null);
-
-      setAuthError("Il tuo account non è ancora abilitato all'accesso.");
-
-      setAuthSubmitting(false);
-
-      return;
-    }
-
-    /*
-     * ============================================================
-     * ACCESSO CONSENTITO
-     * ============================================================
-     */
-
-    setSession(data.session);
-    setProfile(profileData);
-
-    setAuthError("");
-    setAuthMessage("");
-
-    setAuthSubmitting(false);
   };
 
   /*
@@ -789,6 +876,8 @@ function App() {
     setAuthMessage("");
 
     setAuthMode("login");
+
+    navigateTo("/Autenticazione");
   };
 
   /*
@@ -3150,7 +3239,7 @@ function App() {
 
   /*
    * ============================================================
-   * SCHERMATA LOGIN / REGISTRAZIONE
+   * GESTIONE DELLE PAGINE
    * ============================================================
    */
 
@@ -3162,500 +3251,36 @@ function App() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#f6f7f9",
-          fontFamily: "Arial, sans-serif",
+          background: "#f4f6f9",
         }}
       >
         <div
           style={{
             padding: "30px",
-            textAlign: "center",
-            color: "#7b8495",
-            fontSize: "18px",
-            fontWeight: 600,
-          }}
-        >
-          Caricamento...
-        </div>
-      </div>
-    );
-  }
-
-  if (session && profile && profile.role === "pending") {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "#f6f7f9",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "30px 20px",
-          fontFamily: "Arial, sans-serif",
-        }}
-      >
-        <div
-          style={{
-            width: "100%",
-            maxWidth: "460px",
+            borderRadius: "16px",
             background: "#ffffff",
-            borderRadius: "18px",
-            padding: "38px",
-            boxShadow: "0 15px 45px rgba(0, 0, 0, 0.08)",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
             textAlign: "center",
           }}
         >
           <div
             style={{
-              fontSize: "28px",
-              fontWeight: 800,
-              color: "#111827",
-              marginBottom: "12px",
-            }}
-          >
-            I-LABS
-          </div>
-          <div style={{ fontSize: "48px", marginBottom: "16px" }}>⏳</div>
-          <h2
-            style={{ margin: "0 0 12px", fontSize: "20px", color: "#111827" }}
-          >
-            Account in attesa di approvazione
-          </h2>
-          <p
-            style={{
-              color: "#7b8495",
-              fontSize: "14px",
-              lineHeight: 1.6,
-              margin: "0 0 24px",
-            }}
-          >
-            La tua registrazione è stata ricevuta. Un amministratore deve
-            approvare il tuo account prima che tu possa accedere.
-          </p>
-          <button
-            type="button"
-            onClick={handleLogout}
-            style={{
-              padding: "10px 20px",
-              border: "1px solid #dfe3e9",
-              borderRadius: "8px",
-              background: "white",
-              color: "#4b5563",
-              fontSize: "13px",
+              fontSize: "18px",
               fontWeight: 700,
-              cursor: "pointer",
+              marginBottom: "8px",
             }}
           >
-            Esci
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!session || !currentUser) {
-    if (window.__showLogin !== true) {
-      return (
-        <div
-          style={{
-            minHeight: "100vh",
-            background: "#172033",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "30px 20px",
-            fontFamily: "Arial, sans-serif",
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: "460px",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "16px",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "32px",
-                fontWeight: 900,
-                color: "white",
-                letterSpacing: "-1px",
-                marginBottom: "8px",
-              }}
-            >
-              I-LABS
-            </div>
-            <div
-              style={{
-                color: "#8f9bad",
-                fontSize: "13px",
-                fontWeight: 700,
-                letterSpacing: "1.5px",
-                marginBottom: "24px",
-              }}
-            >
-              PRENOTAZIONE SALE
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                window.__showLogin = true;
-                window.dispatchEvent(new Event("showlogin"));
-              }}
-              style={{
-                width: "100%",
-                padding: "16px",
-                border: "none",
-                borderRadius: "10px",
-                background: "white",
-                color: "#172033",
-                fontSize: "15px",
-                fontWeight: 800,
-                cursor: "pointer",
-              }}
-            >
-              Accedi / Registrati
-            </button>
-            <button
-              type="button"
-              onClick={() => (window.location.href = "/visitatori")}
-              style={{
-                width: "100%",
-                padding: "16px",
-                border: "1px solid rgba(255,255,255,0.2)",
-                borderRadius: "10px",
-                background: "transparent",
-                color: "white",
-                fontSize: "15px",
-                fontWeight: 800,
-                cursor: "pointer",
-              }}
-            >
-              Visualizza disponibilità sale
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "#f6f7f9",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "30px 20px",
-          fontFamily: "Arial, sans-serif",
-        }}
-      >
-        <div
-          style={{
-            width: "100%",
-            maxWidth: "460px",
-            background: "#ffffff",
-            borderRadius: "18px",
-            padding: "38px",
-            boxShadow: "0 15px 45px rgba(0, 0, 0, 0.08)",
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => {
-              window.__showLogin = false;
-              window.dispatchEvent(new Event("showlogin"));
-            }}
-            style={{
-              marginBottom: "20px",
-              padding: "8px 14px",
-              border: "1px solid #dfe3e9",
-              borderRadius: "8px",
-              background: "white",
-              color: "#4b5563",
-              fontSize: "13px",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            ← Indietro
-          </button>
-          <div
-            style={{
-              fontSize: "28px",
-              fontWeight: 800,
-              color: "#111827",
-              marginBottom: "6px",
-            }}
-          >
-            I-LABS
+            Caricamento...
           </div>
 
           <div
             style={{
               fontSize: "14px",
-              color: "#7b8495",
-              marginBottom: "28px",
+              color: "#64748b",
             }}
           >
-            Sistema interno di prenotazione sale
+            Verifica dell'account in corso
           </div>
-
-          <div
-            style={{
-              display: "flex",
-              gap: "8px",
-              marginBottom: "25px",
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => {
-                setAuthMode("login");
-                setAuthError("");
-                setAuthMessage("");
-              }}
-              style={{
-                flex: 1,
-                padding: "11px",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: 700,
-                background: authMode === "login" ? "#111827" : "#eef0f3",
-                color: authMode === "login" ? "#ffffff" : "#6b7280",
-              }}
-            >
-              Accedi
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setAuthMode("register");
-                setAuthError("");
-                setAuthMessage("");
-              }}
-              style={{
-                flex: 1,
-                padding: "11px",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: 700,
-                background: authMode === "register" ? "#111827" : "#eef0f3",
-                color: authMode === "register" ? "#ffffff" : "#6b7280",
-              }}
-            >
-              Registrati
-            </button>
-          </div>
-
-          {authMode === "register" && (
-            <>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "15px",
-                  fontSize: "14px",
-                  fontWeight: 700,
-                  color: "#374151",
-                }}
-              >
-                Nome
-                <input
-                  type="text"
-                  value={authFirstName}
-                  onChange={(event) => setAuthFirstName(event.target.value)}
-                  placeholder="Mario"
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    marginTop: "7px",
-                    padding: "12px",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "8px",
-                    fontSize: "15px",
-                  }}
-                />
-              </label>
-
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "15px",
-                  fontSize: "14px",
-                  fontWeight: 700,
-                  color: "#374151",
-                }}
-              >
-                Cognome
-                <input
-                  type="text"
-                  value={authLastName}
-                  onChange={(event) => setAuthLastName(event.target.value)}
-                  placeholder="Rossi"
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    marginTop: "7px",
-                    padding: "12px",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "8px",
-                    fontSize: "15px",
-                  }}
-                />
-              </label>
-            </>
-          )}
-
-          <label
-            style={{
-              display: "block",
-              marginBottom: "15px",
-              fontSize: "14px",
-              fontWeight: 700,
-              color: "#374151",
-            }}
-          >
-            Email
-            <input
-              type="email"
-              value={authEmail}
-              onChange={(event) => setAuthEmail(event.target.value)}
-              placeholder="nome@azienda.it"
-              autoComplete="email"
-              style={{
-                width: "100%",
-                boxSizing: "border-box",
-                marginTop: "7px",
-                padding: "12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "8px",
-                fontSize: "15px",
-              }}
-            />
-          </label>
-
-          <label
-            style={{
-              display: "block",
-              marginBottom: "15px",
-              fontSize: "14px",
-              fontWeight: 700,
-              color: "#374151",
-            }}
-          >
-            Password
-            <input
-              type="password"
-              value={authPassword}
-              onChange={(event) => setAuthPassword(event.target.value)}
-              placeholder="••••••••"
-              autoComplete={
-                authMode === "login" ? "current-password" : "new-password"
-              }
-              style={{
-                width: "100%",
-                boxSizing: "border-box",
-                marginTop: "7px",
-                padding: "12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "8px",
-                fontSize: "15px",
-              }}
-            />
-          </label>
-
-          {authMode === "register" && (
-            <label
-              style={{
-                display: "block",
-                marginBottom: "15px",
-                fontSize: "14px",
-                fontWeight: 700,
-                color: "#374151",
-              }}
-            >
-              Conferma password
-              <input
-                type="password"
-                value={authConfirmPassword}
-                onChange={(event) => setAuthConfirmPassword(event.target.value)}
-                placeholder="••••••••"
-                autoComplete="new-password"
-                style={{
-                  width: "100%",
-                  boxSizing: "border-box",
-                  marginTop: "7px",
-                  padding: "12px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "8px",
-                  fontSize: "15px",
-                }}
-              />
-            </label>
-          )}
-
-          {authError && (
-            <div
-              style={{
-                marginTop: "12px",
-                padding: "12px",
-                borderRadius: "8px",
-                background: "#fdf3f3",
-                color: "#dc2626",
-                fontSize: "14px",
-                fontWeight: 600,
-              }}
-            >
-              {authError}
-            </div>
-          )}
-
-          {authMessage && (
-            <div
-              style={{
-                marginTop: "12px",
-                padding: "12px",
-                borderRadius: "8px",
-                background: "#f0fdf4",
-                color: "#15803d",
-                fontSize: "14px",
-                fontWeight: 600,
-              }}
-            >
-              {authMessage}
-            </div>
-          )}
-
-          <button
-            type="button"
-            disabled={authSubmitting}
-            onClick={authMode === "login" ? handleLogin : handleRegister}
-            style={{
-              width: "100%",
-              marginTop: "22px",
-              padding: "14px",
-              border: "none",
-              borderRadius: "8px",
-              background: "#111827",
-              color: "#ffffff",
-              fontSize: "15px",
-              fontWeight: 700,
-              cursor: authSubmitting ? "default" : "pointer",
-              opacity: authSubmitting ? 0.6 : 1,
-            }}
-          >
-            {authSubmitting
-              ? "Attendere..."
-              : authMode === "login"
-                ? "Accedi"
-                : "Crea account"}
-          </button>
         </div>
       </div>
     );
@@ -3663,9 +3288,402 @@ function App() {
 
   /*
    * ============================================================
-   * RENDER
+   * PAGINA VISITATORI
    * ============================================================
+   *
+   * Questa pagina è completamente separata dal sistema
+   * di autenticazione degli utenti.
    */
+  if (currentPath === "/Visitatori") {
+    return <Visitatori />;
+  }
+
+  /*
+   * ============================================================
+   * PAGINA AUTENTICAZIONE
+   * ============================================================
+   *
+   * Se l'utente non è autenticato oppure è pending,
+   * rimane nella pagina di autenticazione.
+   */
+  if (currentPath === "/Autenticazione") {
+    /*
+     * Account pending.
+     */
+    if (profile?.role === "pending") {
+      return (
+        <div
+          style={{
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "24px",
+            background: "#f4f6f9",
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "520px",
+              background: "#ffffff",
+              borderRadius: "20px",
+              padding: "40px",
+              boxShadow: "0 15px 40px rgba(0,0,0,0.08)",
+              textAlign: "center",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "28px",
+                fontWeight: 800,
+                marginBottom: "12px",
+              }}
+            >
+              Account in attesa
+            </div>
+
+            <div
+              style={{
+                fontSize: "16px",
+                lineHeight: 1.6,
+                color: "#64748b",
+                marginBottom: "28px",
+              }}
+            >
+              Il tuo account è stato registrato correttamente, ma deve ancora
+              essere approvato da un amministratore.
+            </div>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              style={{
+                border: "none",
+                borderRadius: "10px",
+                padding: "12px 22px",
+                background: "#ef4444",
+                color: "#ffffff",
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              Esci
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    /*
+     * Se siamo su /Autenticazione e l'utente è già autenticato
+     * con un ruolo valido, lo mandiamo ai calendari.
+     */
+    if (
+      session &&
+      profile &&
+      (profile.role === "user" || profile.role === "admin")
+    ) {
+      navigateTo("/Utenti");
+      return null;
+    }
+
+    /*
+     * ============================================================
+     * LOGIN / REGISTRAZIONE
+     * ============================================================
+     */
+
+    return (
+      <div className="app">
+        <div
+          style={{
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "24px",
+            boxSizing: "border-box",
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "500px",
+            }}
+          >
+            <div
+              style={{
+                textAlign: "center",
+                marginBottom: "30px",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "34px",
+                  fontWeight: 900,
+                  color: "#2563eb",
+                  marginBottom: "6px",
+                }}
+              >
+                I-LABS
+              </div>
+
+              <div
+                style={{
+                  fontSize: "22px",
+                  fontWeight: 800,
+                }}
+              >
+                Prenotazione Sale
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: "#ffffff",
+                borderRadius: "20px",
+                padding: "32px",
+                boxShadow: "0 15px 40px rgba(0,0,0,0.08)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  gap: "8px",
+                  marginBottom: "25px",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("login");
+                    setAuthError("");
+                    setAuthMessage("");
+                  }}
+                  style={{
+                    flex: 1,
+                    border: "none",
+                    borderRadius: "10px",
+                    padding: "12px",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    background: authMode === "login" ? "#2563eb" : "#e5e7eb",
+                    color: authMode === "login" ? "#ffffff" : "#374151",
+                  }}
+                >
+                  Accedi
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("register");
+                    setAuthError("");
+                    setAuthMessage("");
+                  }}
+                  style={{
+                    flex: 1,
+                    border: "none",
+                    borderRadius: "10px",
+                    padding: "12px",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    background: authMode === "register" ? "#2563eb" : "#e5e7eb",
+                    color: authMode === "register" ? "#ffffff" : "#374151",
+                  }}
+                >
+                  Registrati
+                </button>
+              </div>
+
+              {authError && (
+                <div
+                  style={{
+                    marginBottom: "16px",
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    background: "#fee2e2",
+                    color: "#b91c1c",
+                    fontSize: "14px",
+                  }}
+                >
+                  {authError}
+                </div>
+              )}
+
+              {authMessage && (
+                <div
+                  style={{
+                    marginBottom: "16px",
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    background: "#dcfce7",
+                    color: "#166534",
+                    fontSize: "14px",
+                  }}
+                >
+                  {authMessage}
+                </div>
+              )}
+
+              {authMode === "register" && (
+                <>
+                  <input
+                    type="text"
+                    value={authFirstName}
+                    onChange={(e) => setAuthFirstName(e.target.value)}
+                    placeholder="Nome"
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      marginBottom: "12px",
+                      padding: "13px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "10px",
+                    }}
+                  />
+
+                  <input
+                    type="text"
+                    value={authLastName}
+                    onChange={(e) => setAuthLastName(e.target.value)}
+                    placeholder="Cognome"
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      marginBottom: "12px",
+                      padding: "13px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "10px",
+                    }}
+                  />
+                </>
+              )}
+
+              <input
+                type="email"
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                placeholder="Email"
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  marginBottom: "12px",
+                  padding: "13px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "10px",
+                }}
+              />
+
+              <input
+                type="password"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                placeholder="Password"
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  marginBottom: "12px",
+                  padding: "13px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "10px",
+                }}
+              />
+
+              {authMode === "register" && (
+                <input
+                  type="password"
+                  value={authConfirmPassword}
+                  onChange={(e) => setAuthConfirmPassword(e.target.value)}
+                  placeholder="Conferma password"
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    marginBottom: "16px",
+                    padding: "13px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "10px",
+                  }}
+                />
+              )}
+
+              <button
+                type="button"
+                disabled={authSubmitting}
+                onClick={authMode === "login" ? handleLogin : handleRegister}
+                style={{
+                  width: "100%",
+                  border: "none",
+                  borderRadius: "10px",
+                  padding: "14px",
+                  background: authSubmitting ? "#94a3b8" : "#2563eb",
+                  color: "#ffffff",
+                  fontWeight: 800,
+                  cursor: authSubmitting ? "not-allowed" : "pointer",
+                }}
+              >
+                {authSubmitting
+                  ? "Attendere..."
+                  : authMode === "login"
+                    ? "Accedi"
+                    : "Registrati"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigateTo("/Visitatori")}
+                style={{
+                  width: "100%",
+                  marginTop: "12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "10px",
+                  padding: "13px",
+                  background: "#ffffff",
+                  color: "#374151",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Visualizza disponibilità sale
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /*
+   * ============================================================
+   * PROTEZIONE PAGINA /UTENTI
+   * ============================================================
+   *
+   * Solo gli utenti con ruolo user o admin possono vedere
+   * il calendario interno.
+   */
+  if (
+    currentPath === "/Utenti" &&
+    (!session ||
+      !profile ||
+      (profile.role !== "user" && profile.role !== "admin"))
+  ) {
+    navigateTo("/Autenticazione");
+    return null;
+  }
+
+  /*
+   * Se per qualche motivo l'URL non è uno dei tre percorsi
+   * previsti, torniamo alla pagina di autenticazione.
+   */
+  if (
+    currentPath !== "/Utenti" &&
+    currentPath !== "/Autenticazione" &&
+    currentPath !== "/Visitatori"
+  ) {
+    navigateTo("/Autenticazione");
+    return null;
+  }
 
   return (
     <div className="app">
