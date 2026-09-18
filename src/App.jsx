@@ -4691,13 +4691,8 @@ function App() {
                                         : isBookingActive(booking)
                                           ? "#16a34a"
                                           : "#2563eb",
-                                      height: `${
-                                        measuredBookingHeights[booking.id] ||
-                                        computeBookingBlockHeight(
-                                          booking,
-                                          rowHeights,
-                                        )
-                                      }px`, // ← minHeight → height
+                                      minHeight: `${computeBookingBlockHeight(booking, rowHeights)}px`,
+                                      height: `${computeBookingBlockHeight(booking, rowHeights)}px`,
                                       position: "absolute",
                                       top: `${computeBookingBlockOffset(booking, rowHeights)}px`,
                                       left: "4px",
