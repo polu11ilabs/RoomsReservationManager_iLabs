@@ -288,6 +288,22 @@ const computeBookingBlockOffset = (booking, rowHeights) => {
 const dayNames = ["LUN", "MAR", "MER", "GIO", "VEN"];
 
 function App() {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "40px",
+        fontWeight: "bold",
+      }}
+    >
+      APP FUNZIONA
+    </div>
+  );
+
+  // tutto il resto del codice di App viene temporaneamente lasciato sotto
   /*
    * ============================================================
    * AUTENTICAZIONE
