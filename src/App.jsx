@@ -3248,6 +3248,17 @@ function App() {
    * Se l'utente non è autenticato oppure è pending,
    * rimane nella pagina di autenticazione.
    */
+  if (
+    !authLoading &&
+    session &&
+    profile &&
+    (profile.role === "user" || profile.role === "admin") &&
+    currentPath === "/Autenticazione"
+  ) {
+    navigateTo("/Utenti");
+    return null;
+  }
+
   if (currentPath === "/Autenticazione") {
     /*
      * Account pending.
@@ -3904,6 +3915,7 @@ function App() {
   }
 
   if (
+    !authLoading &&
     currentPath === "/Utenti" &&
     (!session ||
       !profile ||
