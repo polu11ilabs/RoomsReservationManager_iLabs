@@ -244,40 +244,50 @@ const estimateBookingContentHeight = (booking) => {
   return BOOKING_BASE_HEIGHT + 5 + lines * REASON_LINE_HEIGHT;
 };
 
-function App() {
-  const computeBookingBlockOffset = (booking, rowHeights) => {
-    const startMinutes = timeToMinutes(booking.start);
-    const startHour = Math.floor(startMinutes / 60);
-    const minutesIntoHour = startMinutes % 60;
-    const rowIndex = startHour - 8;
+const computeBookingBlockHeight = (booking, rowHeights) => {
+  const startMinutes = timeToMinutes(booking.start);
+  const endMinutes = timeToMinutes(booking.end);
+
+  const startHour = Math.floor(startMinutes / 60);
+  const endHourExclusive = Math.ceil(endMinutes / 60);
+
+  let total = 0;
+
+  for (let hour = startHour; hour < endHourExclusive; hour += 1) {
+    const rowIndex = hour - 8;
+
     const rowHeight = rowHeights[rowIndex] ?? ROW_DEFAULT_HEIGHT;
 
-    return (minutesIntoHour / 60) * rowHeight;
-  };
+    const hourStart = hour * 60;
+    const hourEnd = (hour + 1) * 60;
 
-  const computeBookingBlockHeight = (booking, rowHeights) => {
-    const startMinutes = timeToMinutes(booking.start);
-    const endMinutes = timeToMinutes(booking.end);
-    const startHour = Math.floor(startMinutes / 60);
-    const endHourExclusive = Math.ceil(endMinutes / 60);
+    const overlapStart = Math.max(startMinutes, hourStart);
+    const overlapEnd = Math.min(endMinutes, hourEnd);
 
-    let total = 0;
+    const fraction = (overlapEnd - overlapStart) / 60;
 
-    for (let hour = startHour; hour < endHourExclusive; hour += 1) {
-      const rowIndex = hour - 8;
-      const rowHeight = rowHeights[rowIndex] ?? ROW_DEFAULT_HEIGHT;
-      const hourStart = hour * 60;
-      const hourEnd = (hour + 1) * 60;
-      const overlapStart = Math.max(startMinutes, hourStart);
-      const overlapEnd = Math.min(endMinutes, hourEnd);
-      const fraction = (overlapEnd - overlapStart) / 60;
+    total += rowHeight * fraction;
+  }
 
-      total += rowHeight * fraction;
-    }
+  return Math.max(20, total - 8);
+};
 
-    return Math.max(20, total); // ← rimosso il - 8
-  };
+const computeBookingBlockOffset = (booking, rowHeights) => {
+  const startMinutes = timeToMinutes(booking.start);
 
+  const startHour = Math.floor(startMinutes / 60);
+  const minutesIntoHour = startMinutes % 60;
+
+  const rowIndex = startHour - 8;
+
+  const rowHeight = rowHeights[rowIndex] ?? ROW_DEFAULT_HEIGHT;
+
+  return (minutesIntoHour / 60) * rowHeight;
+};
+
+const dayNames = ["LUN", "MAR", "MER", "GIO", "VEN"];
+
+function App() {
   /*
    * ============================================================
    * AUTENTICAZIONE
@@ -780,20 +790,14 @@ function App() {
    * ============================================================
    */
 
+  const [, forceMinuteTick] = useState(0);
+
   useEffect(() => {
-    const msToNextMinute = (60 - new Date().getSeconds()) * 1000;
-
-    const timeout = setTimeout(() => {
+    const intervalId = setInterval(() => {
       forceMinuteTick((tick) => tick + 1);
+    }, 60000);
 
-      const intervalId = setInterval(() => {
-        forceMinuteTick((tick) => tick + 1);
-      }, 60_000);
-
-      return () => clearInterval(intervalId);
-    }, msToNextMinute);
-
-    return () => clearTimeout(timeout);
+    return () => clearInterval(intervalId);
   }, []);
 
   /*
@@ -4691,8 +4695,13 @@ function App() {
                                         : isBookingActive(booking)
                                           ? "#16a34a"
                                           : "#2563eb",
-                                      minHeight: `${computeBookingBlockHeight(booking, rowHeights)}px`,
-                                      height: `${computeBookingBlockHeight(booking, rowHeights)}px`,
+                                      minHeight: `${
+                                        measuredBookingHeights[booking.id] ||
+                                        computeBookingBlockHeight(
+                                          booking,
+                                          rowHeights,
+                                        )
+                                      }px`,
                                       position: "absolute",
                                       top: `${computeBookingBlockOffset(booking, rowHeights)}px`,
                                       left: "4px",
