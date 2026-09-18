@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import Visitatori from "./Visitatori";
+//import Visitatori from "./Visitatori";
 import DatePicker from "react-datepicker";
 import { supabase } from "./supabaseClient";
 import { it } from "date-fns/locale";
@@ -551,46 +551,19 @@ function App() {
       !!profile &&
       (profile.role === "user" || profile.role === "admin");
 
-    const isPending = !!session && !!profile && profile.role === "pending";
-
-    /*
-     * UTENTE AUTORIZZATO
-     *
-     * Se prova ad aprire /Autenticazione,
-     * viene portato al calendario.
-     */
+    // Utente già autorizzato:
+    // /Autenticazione -> /Utenti
     if (currentPath === "/Autenticazione" && isAuthorized) {
       window.history.replaceState({}, "", "/Utenti");
       setCurrentPath("/Utenti");
       return;
     }
 
-    /*
-     * UTENTE NON AUTORIZZATO
-     *
-     * Solo user e admin possono entrare in /Utenti.
-     */
+    // Utente non autorizzato:
+    // /Utenti -> /Autenticazione
     if (currentPath === "/Utenti" && !isAuthorized) {
       window.history.replaceState({}, "", "/Autenticazione");
       setCurrentPath("/Autenticazione");
-      return;
-    }
-
-    /*
-     * ACCOUNT PENDING
-     *
-     * Il pending può rimanere in /Autenticazione.
-     */
-    if (currentPath === "/Autenticazione" && isPending) {
-      return;
-    }
-
-    /*
-     * VISITATORI
-     *
-     * /Visitatori è accessibile senza autenticazione.
-     */
-    if (currentPath === "/Visitatori") {
       return;
     }
   }, [authLoading, currentPath, session, profile]);
@@ -3289,8 +3262,12 @@ function App() {
    * di autenticazione degli utenti.
    */
   if (currentPath === "/Visitatori") {
-    return <Visitatori />;
-  }
+  return (
+    <div style={{ padding: "40px" }}>
+      Pagina Visitatori temporaneamente disattivata.
+    </div>
+  );
+}
 
   /*
    * ============================================================
