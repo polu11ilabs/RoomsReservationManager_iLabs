@@ -913,6 +913,19 @@ function App() {
 
   const isAdmin = currentUser?.role === "admin";
 
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (
+      currentPath === "/Autenticazione" &&
+      session &&
+      profile &&
+      (profile.role === "user" || profile.role === "admin")
+    ) {
+      navigateTo("/Utenti");
+    }
+  }, [authLoading, currentPath, session, profile]);
+
   /*
    * ============================================================
    * SALE
@@ -3287,16 +3300,29 @@ function App() {
   }
 
   /*
-   * VISITATORI
+   * ============================================================
+   * PAGINA VISITATORI
+   * ============================================================
+   *
+   * Questa pagina è completamente separata dal sistema
+   * di autenticazione degli utenti.
    */
   if (currentPath === "/Visitatori") {
     return <Visitatori />;
   }
 
   /*
-   * AUTENTICAZIONE
+   * ============================================================
+   * PAGINA AUTENTICAZIONE
+   * ============================================================
+   *
+   * Se l'utente non è autenticato oppure è pending,
+   * rimane nella pagina di autenticazione.
    */
   if (currentPath === "/Autenticazione") {
+    /*
+     * Account pending.
+     */
     if (profile?.role === "pending") {
       return (
         <div
@@ -3362,16 +3388,300 @@ function App() {
       );
     }
 
+    /*
+     * Se siamo su /Autenticazione e l'utente è già autenticato
+     * con un ruolo valido, lo mandiamo ai calendari.
+     */
     if (
       session &&
       profile &&
       (profile.role === "user" || profile.role === "admin")
     ) {
-      navigateTo("/Utenti");
       return null;
     }
 
-    // QUI LASCI TUTTO IL TUO BLOCCO LOGIN/REGISTRAZIONE
+    /*
+     * ============================================================
+     * LOGIN / REGISTRAZIONE
+     * ============================================================
+     */
+
+    return (
+      <div className="app">
+        <div
+          style={{
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "24px",
+            boxSizing: "border-box",
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "500px",
+            }}
+          >
+            <div
+              style={{
+                textAlign: "center",
+                marginBottom: "30px",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "34px",
+                  fontWeight: 900,
+                  color: "#2563eb",
+                  marginBottom: "6px",
+                }}
+              >
+                I-LABS
+              </div>
+
+              <div
+                style={{
+                  fontSize: "22px",
+                  fontWeight: 800,
+                }}
+              >
+                Prenotazione Sale
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: "#ffffff",
+                borderRadius: "20px",
+                padding: "32px",
+                boxShadow: "0 15px 40px rgba(0,0,0,0.08)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  gap: "8px",
+                  marginBottom: "25px",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("login");
+                    setAuthError("");
+                    setAuthMessage("");
+                  }}
+                  style={{
+                    flex: 1,
+                    border: "none",
+                    borderRadius: "10px",
+                    padding: "12px",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    background: authMode === "login" ? "#2563eb" : "#e5e7eb",
+                    color: authMode === "login" ? "#ffffff" : "#374151",
+                  }}
+                >
+                  Accedi
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("register");
+                    setAuthError("");
+                    setAuthMessage("");
+                  }}
+                  style={{
+                    flex: 1,
+                    border: "none",
+                    borderRadius: "10px",
+                    padding: "12px",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    background: authMode === "register" ? "#2563eb" : "#e5e7eb",
+                    color: authMode === "register" ? "#ffffff" : "#374151",
+                  }}
+                >
+                  Registrati
+                </button>
+              </div>
+
+              {authError && (
+                <div
+                  style={{
+                    marginBottom: "16px",
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    background: "#fee2e2",
+                    color: "#b91c1c",
+                    fontSize: "14px",
+                  }}
+                >
+                  {authError}
+                </div>
+              )}
+
+              {authMessage && (
+                <div
+                  style={{
+                    marginBottom: "16px",
+                    padding: "12px 14px",
+                    borderRadius: "10px",
+                    background: "#dcfce7",
+                    color: "#166534",
+                    fontSize: "14px",
+                  }}
+                >
+                  {authMessage}
+                </div>
+              )}
+
+              {authMode === "register" && (
+                <>
+                  <input
+                    type="text"
+                    value={authFirstName}
+                    onChange={(e) => setAuthFirstName(e.target.value)}
+                    placeholder="Nome"
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      marginBottom: "12px",
+                      padding: "13px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "10px",
+                    }}
+                  />
+
+                  <input
+                    type="text"
+                    value={authLastName}
+                    onChange={(e) => setAuthLastName(e.target.value)}
+                    placeholder="Cognome"
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      marginBottom: "12px",
+                      padding: "13px",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "10px",
+                    }}
+                  />
+                </>
+              )}
+
+              <input
+                type="email"
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                placeholder="Email"
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  marginBottom: "12px",
+                  padding: "13px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "10px",
+                }}
+              />
+
+              <input
+                type="password"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                placeholder="Password"
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  marginBottom: "12px",
+                  padding: "13px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "10px",
+                }}
+              />
+
+              {authMode === "register" && (
+                <input
+                  type="password"
+                  value={authConfirmPassword}
+                  onChange={(e) => setAuthConfirmPassword(e.target.value)}
+                  placeholder="Conferma password"
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    marginBottom: "16px",
+                    padding: "13px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "10px",
+                  }}
+                />
+              )}
+
+              <button
+                type="button"
+                disabled={authSubmitting}
+                onClick={authMode === "login" ? handleLogin : handleRegister}
+                style={{
+                  width: "100%",
+                  border: "none",
+                  borderRadius: "10px",
+                  padding: "14px",
+                  background: authSubmitting ? "#94a3b8" : "#2563eb",
+                  color: "#ffffff",
+                  fontWeight: 800,
+                  cursor: authSubmitting ? "not-allowed" : "pointer",
+                }}
+              >
+                {authSubmitting
+                  ? "Attendere..."
+                  : authMode === "login"
+                    ? "Accedi"
+                    : "Registrati"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => navigateTo("/Visitatori")}
+                style={{
+                  width: "100%",
+                  marginTop: "12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "10px",
+                  padding: "13px",
+                  background: "#ffffff",
+                  color: "#374151",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Visualizza disponibilità sale
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /*
+   * ============================================================
+   * PROTEZIONE PAGINA /UTENTI
+   * ============================================================
+   *
+   * Solo gli utenti con ruolo user o admin possono vedere
+   * il calendario interno.
+   */
+  if (
+    currentPath === "/Utenti" &&
+    (!session ||
+      !profile ||
+      (profile.role !== "user" && profile.role !== "admin"))
+  ) {
+    navigateTo("/Autenticazione");
+    return null;
   }
 
   /*
@@ -3384,22 +3694,6 @@ function App() {
     currentPath !== "/Visitatori"
   ) {
     navigateTo("/Autenticazione");
-    return null;
-  }
-
-  /*
-   * PROTEZIONE DEFINITIVA DI /Utenti
-   */
-  const canAccessUsers =
-    !!session &&
-    !!profile &&
-    (profile.role === "user" || profile.role === "admin");
-
-  if (currentPath === "/Utenti" && !canAccessUsers) {
-    window.history.replaceState({}, "", "/Autenticazione");
-
-    setCurrentPath("/Autenticazione");
-
     return null;
   }
 
