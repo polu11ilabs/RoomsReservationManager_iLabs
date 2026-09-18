@@ -1715,14 +1715,8 @@ function App() {
     setLoadingRooms(false);
   };
 
-  /*
-   * Caricamento quando l'utente è autenticato.
-   */
-
   useEffect(() => {
-    const isVisitorPage = currentPath === "/Visitatori";
-
-    if (!session?.user && !isVisitorPage) {
+    if (!session?.user) {
       setRooms([]);
       setLoadingRooms(false);
       return;
@@ -1735,7 +1729,7 @@ function App() {
 
     setLoadingRooms(true);
     loadData();
-  }, [session?.user?.id, profile?.id, currentPath]); // eslint-disable-line
+  }, [session?.user?.id, profile?.id]);
 
   /*
    * ============================================================
@@ -1745,7 +1739,6 @@ function App() {
 
   useEffect(() => {
     if (
-      currentPath !== "/Visitatori" &&
       !(
         session &&
         profile &&
@@ -1795,7 +1788,7 @@ function App() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentPath, session, profile]);
+  }, [session, profile]);
 
   /*
    * ============================================================
@@ -3531,7 +3524,7 @@ function App() {
 
               <button
                 type="button"
-                onClick={() => navigateTo("/Visitatori")}
+                onClick={() => (window.location.href = "/Visitatori")}
                 style={{
                   width: "100%",
                   marginTop: "12px",
@@ -3553,7 +3546,7 @@ function App() {
     );
   }
 
-  if (!currentUser && currentPath !== "/Visitatori") {
+  if (!currentUser) {
     return null;
   }
 
@@ -3614,11 +3607,7 @@ function App() {
    * Se per qualche motivo l'URL non è uno dei tre percorsi
    * previsti, torniamo alla pagina di autenticazione.
    */
-  if (
-    currentPath !== "/Utenti" &&
-    currentPath !== "/Autenticazione" &&
-    currentPath !== "/Visitatori"
-  ) {
+  if (currentPath !== "/Utenti" && currentPath !== "/Autenticazione") {
     navigateTo("/Autenticazione");
     return null;
   }
