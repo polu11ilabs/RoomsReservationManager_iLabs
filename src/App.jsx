@@ -305,33 +305,12 @@ function App() {
    */
 
   const getCurrentPath = () => {
-    const path = window.location.pathname.toLowerCase();
-
-    if (path === "/utenti" || path === "/utenti/") {
-      return "/utenti";
-    }
-
-    if (path === "/autenticazione" || path === "/autenticazione/") {
-      return "/autenticazione";
-    }
-
-    if (path === "/visitatori" || path === "/visitatori/") {
-      return "/visitatori";
-    }
-
-    // Se l'utente era loggato, mandalo su /Utenti invece di /Autenticazione
-    const wasLoggedIn = localStorage.getItem("ilabs_logged_in");
-    if (wasLoggedIn === "true") {
-      return "/utenti";
-    }
-
     return "/autenticazione";
   };
 
   const [currentPath, setCurrentPath] = useState(getCurrentPath);
 
   const navigateTo = (path) => {
-    window.history.pushState({}, "", path);
     setCurrentPath(path);
     sessionStorage.setItem("ilabs_path", path);
   };
