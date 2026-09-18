@@ -434,7 +434,6 @@ function App() {
 
           setSession(null);
           setProfile(null);
-          setAuthLoading(false);
 
           return;
         }
@@ -447,7 +446,6 @@ function App() {
         if (!currentSession?.user) {
           setSession(null);
           setProfile(null);
-          setAuthLoading(false);
 
           return;
         }
@@ -488,15 +486,13 @@ function App() {
          */
         setSession(currentSession);
         setProfile(userProfile);
-        setAuthLoading(false);
       } catch (error) {
         console.error("Errore inizializzazione autenticazione:", error);
-
         if (!mounted) return;
-
         setSession(null);
         setProfile(null);
-        setAuthLoading(false);
+      } finally {
+        if (mounted) setAuthLoading(false); // ← garantito sempre
       }
     };
 
@@ -541,31 +537,6 @@ function App() {
       subscription.unsubscribe();
     };
   }, []);
-
-  useEffect(() => {
-    if (authLoading) return;
-
-    const isAuthorized =
-      !!session &&
-      !!profile &&
-      (profile.role === "user" || profile.role === "admin");
-
-    // Utente già autorizzato:
-    // /Autenticazione -> /Utenti
-    if (currentPath === "/Autenticazione" && isAuthorized) {
-      window.history.replaceState({}, "", "/Utenti");
-      setCurrentPath("/Utenti");
-      return;
-    }
-
-    // Utente non autorizzato:
-    // /Utenti -> /Autenticazione
-    if (currentPath === "/Utenti" && !isAuthorized) {
-      window.history.replaceState({}, "", "/Autenticazione");
-      setCurrentPath("/Autenticazione");
-      return;
-    }
-  }, [authLoading, currentPath, session, profile]);
 
   /*
    * ============================================================
@@ -2255,9 +2226,7 @@ function App() {
     );
 
     if (databaseUnavailableConflict) {
-      setFormErrors({
-        time: "La sala non è disponibile nell'intervallo selezionato.",
-      });
+      alert("La sala non è disponibile nell'intervallo selezionato.");
 
       await loadData();
 
@@ -3704,31 +3673,32 @@ function App() {
                   weekDays.forEach((date) => {
                     const dateKey = formatDateKey(date);
 
-                    room.bookings
-                      .filter((item) => {
-                        if (item.day !== dateKey) return false;
-                        const start = timeToMinutes(item.start);
-                        return start >= hour * 60 && start < (hour + 1) * 60;
-                      })
-                      .forEach((booking) => {
-                        const duration =
-                          timeToMinutes(booking.end) -
-                          timeToMinutes(booking.start);
+                    const bookingsInCell = room.bookings.filter((item) => {
+                      if (item.day !== dateKey) return false;
+                      const start = timeToMinutes(item.start);
+                      return start >= hour * 60 && start < (hour + 1) * 60;
+                    });
 
-                        if (duration > 60) return;
+                    bookingsInCell.forEach((booking) => {
+                      const duration =
+                        timeToMinutes(booking.end) -
+                        timeToMinutes(booking.start);
+                      if (duration > 60) return;
 
-                        const contentHeight =
-                          estimateBookingContentHeight(booking) + 8;
-                        const startMinutes = timeToMinutes(booking.start);
-                        const minutesIntoHour = startMinutes % 60;
-                        const offset =
-                          (minutesIntoHour / 60) * ROW_DEFAULT_HEIGHT;
-                        const requiredHeight = offset + contentHeight;
+                      const measured = measuredBookingHeights[booking.id];
+                      const contentHeight = measured
+                        ? measured + 8
+                        : estimateBookingContentHeight(booking) + 8;
+                      const startMinutes = timeToMinutes(booking.start);
+                      const minutesIntoHour = startMinutes % 60;
+                      const offset =
+                        (minutesIntoHour / 60) * ROW_DEFAULT_HEIGHT;
+                      const requiredHeight = offset + contentHeight;
 
-                        if (requiredHeight > neededHeight) {
-                          neededHeight = requiredHeight;
-                        }
-                      });
+                      if (requiredHeight > neededHeight) {
+                        neededHeight = requiredHeight;
+                      }
+                    });
                   });
 
                   return neededHeight;
