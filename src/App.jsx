@@ -4664,129 +4664,185 @@ function App() {
                                   />
                                 )}
 
-                                {bookingsInCell.map((booking) => (
-                                  <div
-                                    key={booking.id}
-                                    ref={(node) => {
-                                      bookingBlockRefs.current[booking.id] =
-                                        node;
-                                    }}
-                                    className={`booking-block ${
-                                      booking.ownerId === currentUser?.id
-                                        ? "booking-block-owned"
-                                        : ""
-                                    } ${
-                                      isBookingActive(booking)
-                                        ? "booking-block-active"
-                                        : ""
-                                    } ${
-                                      isBookingExpired(booking)
-                                        ? "booking-block-expired"
-                                        : ""
-                                    } ${
-                                      draggedBooking &&
-                                      draggedBooking.bookingId === booking.id
-                                        ? "booking-block-dragging"
-                                        : ""
-                                    }`}
-                                    style={{
-                                      backgroundColor: isBookingExpired(booking)
-                                        ? undefined
-                                        : isBookingActive(booking)
-                                          ? "#16a34a"
-                                          : "#2563eb",
-                                      minHeight: `${
-                                        measuredBookingHeights[booking.id] ||
-                                        computeBookingBlockHeight(
-                                          booking,
-                                          rowHeights,
-                                        )
-                                      }px`,
-                                      position: "absolute",
-                                      top: `${computeBookingBlockOffset(booking, rowHeights)}px`,
-                                      left: "4px",
-                                      right: "4px",
-                                    }}
-                                    draggable={
-                                      !isBookingExpired(booking) &&
-                                      (isAdmin ||
-                                        booking.ownerId === currentUser.id)
-                                    }
-                                    onDragStart={(event) =>
-                                      handleBookingDragStart(
-                                        event,
-                                        room.id,
-                                        booking,
-                                      )
-                                    }
-                                    onDragEnd={handleBookingDragEnd}
-                                    onDragOver={(event) =>
-                                      handleBookingBlockDragOver(
-                                        event,
-                                        room.id,
-                                        date,
-                                        hour,
-                                        rowHeights,
-                                      )
-                                    }
-                                    onDrop={(event) =>
-                                      handleBookingBlockDrop(
-                                        event,
-                                        room.id,
-                                        date,
-                                        hour,
-                                        rowHeights,
-                                      )
-                                    }
-                                    onClick={(event) => event.stopPropagation()}
-                                  >
-                                    <div className="booking-top-row">
-                                      <strong>{booking.name}</strong>
+                                {(() => {
+                                  // Raggruppa le prenotazioni in colonne per evitare sovrapposizioni
+                                  const columns = [];
 
-                                      {(isAdmin ||
-                                        (!isBookingExpired(booking) &&
-                                          booking.ownerId ===
-                                            currentUser.id)) && (
-                                        <div className="booking-owner-actions">
-                                          <button
-                                            type="button"
-                                            className="calendar-edit-button"
-                                            onClick={(event) => {
-                                              event.stopPropagation();
-                                              openEditReason(room.id, booking);
-                                            }}
-                                          >
-                                            Modifica
-                                          </button>
+                                  bookingsInCell.forEach((booking) => {
+                                    const bookingStart = timeToMinutes(
+                                      booking.start,
+                                    );
+                                    const bookingEnd = timeToMinutes(
+                                      booking.end,
+                                    );
 
-                                          <button
-                                            type="button"
-                                            className="calendar-delete-button"
-                                            onClick={(event) => {
-                                              event.stopPropagation();
-                                              handleDeleteBooking(
-                                                room.id,
-                                                booking.id,
-                                              );
-                                            }}
-                                          >
-                                            ×
-                                          </button>
+                                    let placed = false;
+
+                                    for (
+                                      let col = 0;
+                                      col < columns.length;
+                                      col++
+                                    ) {
+                                      const lastInCol =
+                                        columns[col][columns[col].length - 1];
+                                      const lastEnd = timeToMinutes(
+                                        lastInCol.end,
+                                      );
+
+                                      if (bookingStart >= lastEnd) {
+                                        columns[col].push(booking);
+                                        placed = true;
+                                        break;
+                                      }
+                                    }
+
+                                    if (!placed) {
+                                      columns.push([booking]);
+                                    }
+                                  });
+
+                                  const totalCols = columns.length;
+
+                                  return columns.flatMap((col, colIndex) =>
+                                    col.map((booking) => {
+                                      const width = `calc((100% - 8px) / ${totalCols})`;
+                                      const left = `calc(4px + (100% - 8px) / ${totalCols} * ${colIndex})`;
+
+                                      return (
+                                        <div
+                                          key={booking.id}
+                                          ref={(node) => {
+                                            bookingBlockRefs.current[
+                                              booking.id
+                                            ] = node;
+                                          }}
+                                          className={`booking-block ${
+                                            booking.ownerId === currentUser?.id
+                                              ? "booking-block-owned"
+                                              : ""
+                                          } ${isBookingActive(booking) ? "booking-block-active" : ""} ${
+                                            isBookingExpired(booking)
+                                              ? "booking-block-expired"
+                                              : ""
+                                          } ${
+                                            draggedBooking &&
+                                            draggedBooking.bookingId ===
+                                              booking.id
+                                              ? "booking-block-dragging"
+                                              : ""
+                                          }`}
+                                          style={{
+                                            backgroundColor: isBookingExpired(
+                                              booking,
+                                            )
+                                              ? undefined
+                                              : isBookingActive(booking)
+                                                ? "#16a34a"
+                                                : "#2563eb",
+                                            minHeight: `${
+                                              measuredBookingHeights[
+                                                booking.id
+                                              ] ||
+                                              computeBookingBlockHeight(
+                                                booking,
+                                                rowHeights,
+                                              )
+                                            }px`,
+                                            position: "absolute",
+                                            top: `${computeBookingBlockOffset(booking, rowHeights)}px`,
+                                            left,
+                                            width,
+                                            right: "auto",
+                                          }}
+                                          draggable={
+                                            !isBookingExpired(booking) &&
+                                            (isAdmin ||
+                                              booking.ownerId ===
+                                                currentUser.id)
+                                          }
+                                          onDragStart={(event) =>
+                                            handleBookingDragStart(
+                                              event,
+                                              room.id,
+                                              booking,
+                                            )
+                                          }
+                                          onDragEnd={handleBookingDragEnd}
+                                          onDragOver={(event) =>
+                                            handleBookingBlockDragOver(
+                                              event,
+                                              room.id,
+                                              date,
+                                              hour,
+                                              rowHeights,
+                                            )
+                                          }
+                                          onDrop={(event) =>
+                                            handleBookingBlockDrop(
+                                              event,
+                                              room.id,
+                                              date,
+                                              hour,
+                                              rowHeights,
+                                            )
+                                          }
+                                          onClick={(event) =>
+                                            event.stopPropagation()
+                                          }
+                                        >
+                                          <div className="booking-top-row">
+                                            <strong>{booking.name}</strong>
+
+                                            {(isAdmin ||
+                                              (!isBookingExpired(booking) &&
+                                                booking.ownerId ===
+                                                  currentUser.id)) && (
+                                              <div className="booking-owner-actions">
+                                                <button
+                                                  type="button"
+                                                  className="calendar-edit-button"
+                                                  onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    openEditReason(
+                                                      room.id,
+                                                      booking,
+                                                    );
+                                                  }}
+                                                >
+                                                  Modifica
+                                                </button>
+
+                                                <button
+                                                  type="button"
+                                                  className="calendar-delete-button"
+                                                  onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    handleDeleteBooking(
+                                                      room.id,
+                                                      booking.id,
+                                                    );
+                                                  }}
+                                                >
+                                                  ×
+                                                </button>
+                                              </div>
+                                            )}
+                                          </div>
+
+                                          <span className="booking-time">
+                                            {booking.start} – {booking.end}
+                                          </span>
+
+                                          {booking.reason && (
+                                            <span className="booking-reason">
+                                              {booking.reason}
+                                            </span>
+                                          )}
                                         </div>
-                                      )}
-                                    </div>
-
-                                    <span className="booking-time">
-                                      {booking.start} – {booking.end}
-                                    </span>
-
-                                    {booking.reason && (
-                                      <span className="booking-reason">
-                                        {booking.reason}
-                                      </span>
-                                    )}
-                                  </div>
-                                ))}
+                                      );
+                                    }),
+                                  );
+                                })()}
                               </div>
                             );
                           })}
