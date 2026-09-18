@@ -1795,10 +1795,9 @@ function App() {
   }, [session?.user?.id, profile?.id]);
 
   useEffect(() => {
-    if (currentPath === "/visitatori" && !session?.user) {
-      setLoadingRooms(true);
-      loadData();
-    }
+    if (currentPath !== "/Visitatori") return;
+    setLoadingRooms(true);
+    loadData();
   }, [currentPath]);
 
   /*
