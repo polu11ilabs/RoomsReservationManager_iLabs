@@ -2131,6 +2131,13 @@ function App() {
       return;
     }
 
+    const requestedStart = new Date(bookingDate);
+
+    const [endHour, endMinute] = endTime.split(":").map(Number);
+
+    const requestedEnd = new Date(selectedDate);
+    requestedEnd.setHours(endHour, endMinute, 0, 0);
+
     const dateKey = formatDateKey(selectedDate);
 
     const selectedRoomObject = rooms.find((room) => room.name === selectedRoom);
@@ -3131,17 +3138,17 @@ function App() {
         const unavailableStart = new Date(period.start_at);
 
         if (!period.end_at) {
-          return newBookingEnd > unavailableStart;
+          return requestedEnd > unavailableStart;
         }
 
         const unavailableEnd = new Date(period.end_at);
 
         return (
-          newBookingStart < unavailableEnd && newBookingEnd > unavailableStart
+          requestedStart < unavailableEnd && requestedEnd > unavailableStart
         );
       },
     );
-
+    
     if (databaseUnavailableConflict) {
       alert("La sala non è disponibile nell'intervallo selezionato.");
 
@@ -3625,6 +3632,30 @@ function App() {
   ) {
     navigateTo("/Autenticazione");
     return null;
+  }
+
+  if (!currentUser) {
+    return (
+      <div className="app">
+        <div
+          style={{
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "24px",
+          }}
+        >
+          <div style={{ textAlign: "center" }}>
+            <h2>Disponibilità sale</h2>
+            <p>Vista pubblica in preparazione.</p>
+            <button type="button" onClick={() => navigateTo("/Autenticazione")}>
+              Torna al login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
