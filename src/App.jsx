@@ -3939,7 +3939,7 @@ function App() {
             onClick={() => setShowProfileMenu((current) => !current)}
           >
             <div className="user-avatar">
-              {currentUser.name
+              {currentUser?.name
                 .split(" ")
                 .map((part) => part[0])
                 .join("")
