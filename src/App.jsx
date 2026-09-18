@@ -3153,7 +3153,7 @@ function App() {
    * ============================================================
    */
 
-  if (currentPath === "/visitatori") {
+  if (currentPath === "/Visitatori") {
     return (
       <div className="app">
         <header className="header">
@@ -3829,6 +3829,10 @@ function App() {
     );
   }
 
+  if (!currentUser && currentPath !== "/Visitatori") {
+    return null;
+  }
+
   /*
    * ============================================================
    * PROTEZIONE PAGINA /UTENTI
@@ -3895,30 +3899,6 @@ function App() {
     return null;
   }
 
-  if (!currentUser && currentPath !== "/Visitatori") {
-    return (
-      <div className="app">
-        <div
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "24px",
-          }}
-        >
-          <div style={{ textAlign: "center" }}>
-            <h2>Disponibilità sale</h2>
-            <p>Vista pubblica in preparazione.</p>
-            <button type="button" onClick={() => navigateTo("/Autenticazione")}>
-              Torna al login
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="app">
       <header className="header">
@@ -3948,7 +3928,7 @@ function App() {
             </div>
 
             <div className="user-info">
-              <strong>{currentUser.name}</strong>
+              <strong>{currentUser?.name}</strong>
 
               <span>{isAdmin ? "Amministratore" : "Dipendente"}</span>
             </div>
@@ -4979,7 +4959,7 @@ function App() {
                                         node;
                                     }}
                                     className={`booking-block ${
-                                      booking.ownerId === currentUser.id
+                                      booking.ownerId === currentUser?.id
                                         ? "booking-block-owned"
                                         : ""
                                     } ${
@@ -5356,7 +5336,7 @@ function App() {
                       >
                         <select
                           value={user.role}
-                          disabled={user.id === currentUser.id}
+                          disabled={user.id === currentUser?.id}
                           onChange={(event) =>
                             changeUserRole(user.id, event.target.value)
                           }
@@ -5366,7 +5346,7 @@ function App() {
                           <option value="admin">Amministratore</option>
                         </select>
 
-                        {user.id === currentUser.id ? (
+                        {user.id === currentUser?.id ? (
                           <span
                             style={{
                               fontSize: "13px",
