@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import Visitatori from "./Visitatori";
 import DatePicker from "react-datepicker";
 import { supabase } from "./supabaseClient";
 import { it } from "date-fns/locale";
