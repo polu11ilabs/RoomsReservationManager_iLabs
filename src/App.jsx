@@ -790,14 +790,20 @@ function App() {
    * ============================================================
    */
 
-  const [, forceMinuteTick] = useState(0);
-
   useEffect(() => {
-    const intervalId = setInterval(() => {
-      forceMinuteTick((tick) => tick + 1);
-    }, 60000);
+    const msToNextMinute = (60 - new Date().getSeconds()) * 1000;
 
-    return () => clearInterval(intervalId);
+    const timeout = setTimeout(() => {
+      forceMinuteTick((tick) => tick + 1);
+
+      const intervalId = setInterval(() => {
+        forceMinuteTick((tick) => tick + 1);
+      }, 60_000);
+
+      return () => clearInterval(intervalId);
+    }, msToNextMinute);
+
+    return () => clearTimeout(timeout);
   }, []);
 
   /*
