@@ -1724,7 +1724,7 @@ function App() {
    */
 
   useEffect(() => {
-    const isVisitorPage = currentPath === "/visitatori";
+    const isVisitorPage = currentPath === "/Visitatori";
 
     if (!session?.user && !isVisitorPage) {
       setRooms([]);
@@ -1748,7 +1748,7 @@ function App() {
    */
 
   useEffect(() => {
-    if (!session?.user && currentPath !== "/visitatori") {
+    if (!session?.user && currentPath !== "/Visitatori") {
       return;
     }
 
