@@ -1794,12 +1794,6 @@ function App() {
     };
   }, [session?.user?.id, profile?.id]);
 
-  useEffect(() => {
-    if (currentPath !== "/Visitatori") return;
-    setLoadingRooms(true);
-    loadData();
-  }, [currentPath]);
-
   /*
    * ============================================================
    * AUTOSIZE MODIFICA
