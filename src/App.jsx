@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-//import Visitatori from "./Visitatori";
 import DatePicker from "react-datepicker";
 import { supabase } from "./supabaseClient";
 import { it } from "date-fns/locale";
@@ -3252,22 +3251,6 @@ function App() {
       </div>
     );
   }
-
-  /*
-   * ============================================================
-   * PAGINA VISITATORI
-   * ============================================================
-   *
-   * Questa pagina è completamente separata dal sistema
-   * di autenticazione degli utenti.
-   */
-  if (currentPath === "/Visitatori") {
-  return (
-    <div style={{ padding: "40px" }}>
-      Pagina Visitatori temporaneamente disattivata.
-    </div>
-  );
-}
 
   /*
    * ============================================================
