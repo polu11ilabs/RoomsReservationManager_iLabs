@@ -534,6 +534,7 @@ function App() {
         currentSession
       ) {
         setSession(currentSession);
+        loadProfile(currentSession.user);
       }
     });
 
