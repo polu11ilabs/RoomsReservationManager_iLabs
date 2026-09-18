@@ -4702,7 +4702,10 @@ function App() {
                                           rowHeights,
                                         )
                                       }px`,
-                                      marginTop: `${computeBookingBlockOffset(booking, rowHeights)}px`,
+                                      position: "absolute",
+                                      top: `${computeBookingBlockOffset(booking, rowHeights)}px`,
+                                      left: "4px",
+                                      right: "4px",
                                     }}
                                     draggable={
                                       !isBookingExpired(booking) &&
