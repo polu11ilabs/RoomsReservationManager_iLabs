@@ -486,13 +486,17 @@ function App() {
          */
         setSession(currentSession);
         setProfile(userProfile);
+
+        if (userProfile.role === "user" || userProfile.role === "admin") {
+          navigateTo("/Utenti");
+        }
       } catch (error) {
         console.error("Errore inizializzazione autenticazione:", error);
         if (!mounted) return;
         setSession(null);
         setProfile(null);
       } finally {
-        if (mounted) setAuthLoading(false); // ← garantito sempre
+        if (mounted) setAuthLoading(false);
       }
     };
 
@@ -508,20 +512,14 @@ function App() {
     } = supabase.auth.onAuthStateChange((event, currentSession) => {
       if (!mounted) return;
 
-      /*
-       * Logout
-       */
       if (event === "SIGNED_OUT") {
         setSession(null);
         setProfile(null);
         setAuthLoading(false);
-
+        navigateTo("/Autenticazione");
         return;
       }
 
-      /*
-       * Login / sessione aggiornata
-       */
       if (
         (event === "SIGNED_IN" ||
           event === "INITIAL_SESSION" ||
