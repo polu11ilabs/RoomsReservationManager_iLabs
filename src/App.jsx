@@ -3898,7 +3898,7 @@ function App() {
     return null;
   }
 
-  if (!currentUser) {
+  if (!currentUser && currentPath !== "/Visitatori") {
     return (
       <div className="app">
         <div
