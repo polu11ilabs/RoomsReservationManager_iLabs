@@ -333,6 +333,7 @@ function App() {
   const navigateTo = (path) => {
     window.history.pushState({}, "", path);
     setCurrentPath(path);
+    sessionStorage.setItem("ilabs_path", path);
   };
 
   const handleBrowserNavigation = () => {
@@ -799,6 +800,7 @@ function App() {
    */
 
   const handleLogout = async () => {
+    sessionStorage.removeItem("ilabs_path");
     const { error } = await supabase.auth.signOut();
 
     if (error) {
@@ -3915,8 +3917,9 @@ function App() {
   }
 
   if (
-    !authLoading &&
     currentPath === "/Utenti" &&
+    !authLoading &&
+    !sessionStorage.getItem("ilabs_path") &&
     (!session ||
       !profile ||
       (profile.role !== "user" && profile.role !== "admin"))
