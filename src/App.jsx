@@ -319,6 +319,12 @@ function App() {
       return "/Visitatori";
     }
 
+    // Se l'utente era loggato, mandalo su /Utenti invece di /Autenticazione
+    const wasLoggedIn = localStorage.getItem("ilabs_logged_in");
+    if (wasLoggedIn === "true") {
+      return "/Utenti";
+    }
+
     return "/Autenticazione";
   };
 
@@ -773,6 +779,7 @@ function App() {
 
       setAuthSubmitting(false);
 
+      localStorage.setItem("ilabs_logged_in", "true");
       navigateTo("/Utenti");
     } catch (error) {
       console.error("Errore login:", error);
@@ -798,6 +805,8 @@ function App() {
       console.error("Errore logout:", error);
       return;
     }
+
+    localStorage.removeItem("ilabs_logged_in");
 
     setSession(null);
     setProfile(null);
