@@ -305,10 +305,6 @@ function App() {
    */
 
   const getCurrentPath = () => {
-    const path = window.location.pathname.toLowerCase();
-    if (path === "/visitatori" || path === "/visitatori/") {
-      return "/Visitatori";
-    }
     return "/Autenticazione";
   };
 
@@ -1748,12 +1744,19 @@ function App() {
    */
 
   useEffect(() => {
-    if (!session?.user && currentPath !== "/Visitatori") {
+    if (
+      currentPath !== "/Visitatori" &&
+      !(
+        session &&
+        profile &&
+        (profile.role === "user" || profile.role === "admin")
+      )
+    ) {
       return;
     }
 
     const channel = supabase
-      .channel("ilabs-bookings-realtime")
+      .channel("ilabs-realtime")
       .on(
         "postgres_changes",
         {
@@ -1792,7 +1795,7 @@ function App() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [session?.user?.id, profile?.id]);
+  }, [currentPath, session, profile]);
 
   /*
    * ============================================================
@@ -3152,285 +3155,6 @@ function App() {
    * GESTIONE DELLE PAGINE
    * ============================================================
    */
-
-  if (currentPath === "/Visitatori") {
-    return (
-      <div className="app">
-        <header className="header">
-          <div className="brand">
-            <div className="brand-logo">I-LABS</div>
-            <div>
-              <h1>Prenotazione Sale</h1>
-              <span>Disponibilità sale — vista pubblica</span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => navigateTo("/Autenticazione")}
-            style={{
-              padding: "10px 16px",
-              border: "1px solid rgba(255,255,255,0.25)",
-              borderRadius: "7px",
-              background: "transparent",
-              color: "inherit",
-              cursor: "pointer",
-              fontWeight: 600,
-            }}
-          >
-            Accedi
-          </button>
-        </header>
-
-        <main className="main">
-          <section className="rooms-section">
-            <div className="section-heading">
-              <div>
-                <span className="eyebrow">DISPONIBILITÀ</span>
-                <h3>Calendario sale (sola lettura)</h3>
-              </div>
-            </div>
-
-            {loadingRooms && (
-              <div
-                style={{
-                  padding: "30px",
-                  textAlign: "center",
-                  color: "#7b8495",
-                }}
-              >
-                Caricamento...
-              </div>
-            )}
-
-            {!loadingRooms && roomsError && (
-              <div
-                style={{
-                  padding: "20px",
-                  borderRadius: "8px",
-                  background: "#fdf3f3",
-                  color: "#dc2626",
-                  fontWeight: 700,
-                }}
-              >
-                {roomsError}
-              </div>
-            )}
-
-            {!loadingRooms && !roomsError && rooms.length === 0 && (
-              <div
-                style={{
-                  padding: "30px",
-                  textAlign: "center",
-                  color: "#7b8495",
-                }}
-              >
-                Nessuna sala configurata.
-              </div>
-            )}
-
-            <div className="rooms-calendar">
-              {rooms.map((room) => {
-                const currentWeekStart =
-                  roomWeeks[room.id] || getMonday(new Date());
-
-                const weekDays = Array.from({ length: 5 }, (_, index) => {
-                  const date = new Date(currentWeekStart);
-                  date.setDate(currentWeekStart.getDate() + index);
-                  return date;
-                });
-
-                const weekTitle = `${weekDays[0].toLocaleDateString("it-IT", {
-                  day: "numeric",
-                  month: "long",
-                })} – ${weekDays[4].toLocaleDateString("it-IT", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}`;
-
-                const rowHeights = Array.from({ length: 10 }, (_, index) => {
-                  const hour = index + 8;
-                  let neededHeight = ROW_DEFAULT_HEIGHT;
-
-                  weekDays.forEach((date) => {
-                    const dateKey = formatDateKey(date);
-
-                    const bookingsInCell = room.bookings.filter((item) => {
-                      if (item.day !== dateKey) return false;
-                      const start = timeToMinutes(item.start);
-                      return start >= hour * 60 && start < (hour + 1) * 60;
-                    });
-
-                    bookingsInCell.forEach((booking) => {
-                      const duration =
-                        timeToMinutes(booking.end) -
-                        timeToMinutes(booking.start);
-                      if (duration > 60) return;
-
-                      const measured = measuredBookingHeights[booking.id];
-                      const contentHeight = measured
-                        ? measured + 8
-                        : estimateBookingContentHeight(booking) + 8;
-                      const startMinutes = timeToMinutes(booking.start);
-                      const minutesIntoHour = startMinutes % 60;
-                      const offset =
-                        (minutesIntoHour / 60) * ROW_DEFAULT_HEIGHT;
-                      const requiredHeight = offset + contentHeight;
-
-                      if (requiredHeight > neededHeight) {
-                        neededHeight = requiredHeight;
-                      }
-                    });
-                  });
-
-                  return neededHeight;
-                });
-
-                return (
-                  <div className="calendar-room" key={room.id}>
-                    <div className="calendar-room-header">
-                      <div className="calendar-room-name">
-                        <span
-                          className="calendar-room-color"
-                          style={{ backgroundColor: room.color }}
-                        />
-                        <div>
-                          <h4>{room.name}</h4>
-                          <p>{room.description}</p>
-                        </div>
-                      </div>
-
-                      <div className="room-calendar-navigation">
-                        <button
-                          type="button"
-                          className="week-button"
-                          onClick={() => changeRoomWeek(room.id, -1)}
-                        >
-                          ←
-                        </button>
-                        <button
-                          type="button"
-                          className="today-button"
-                          onClick={() => goRoomToToday(room.id)}
-                        >
-                          Oggi
-                        </button>
-                        <span className="week-title">{weekTitle}</span>
-                        <button
-                          type="button"
-                          className="week-button"
-                          onClick={() => changeRoomWeek(room.id, 1)}
-                        >
-                          →
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="calendar-wrapper">
-                      <div className="calendar-header-row">
-                        <div className="time-column-header" />
-                        {weekDays.map((date, index) => {
-                          const dateKey = formatDateKey(date);
-                          const isToday = dateKey === formatDateKey(new Date());
-
-                          return (
-                            <div
-                              className={`day-column-header ${isToday ? "today-column" : ""}`}
-                              key={dateKey}
-                            >
-                              <span>{dayNames[index]}</span>
-                              <strong>{date.getDate()}</strong>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {Array.from({ length: 10 }, (_, index) => {
-                        const hour = index + 8;
-                        const rowHeight = rowHeights[index];
-
-                        return (
-                          <div
-                            className="calendar-row"
-                            key={hour}
-                            style={{ height: `${rowHeight}px` }}
-                          >
-                            <div className="time-cell">
-                              {String(hour).padStart(2, "0")}:00
-                            </div>
-
-                            {weekDays.map((date) => {
-                              const dateKey = formatDateKey(date);
-
-                              const bookingsInCell = room.bookings.filter(
-                                (item) => {
-                                  if (item.day !== dateKey) return false;
-                                  const start = timeToMinutes(item.start);
-                                  return (
-                                    start >= hour * 60 &&
-                                    start < (hour + 1) * 60
-                                  );
-                                },
-                              );
-
-                              const isToday =
-                                dateKey === formatDateKey(new Date());
-
-                              return (
-                                <div
-                                  className={`calendar-cell ${isToday ? "today-cell" : ""}`}
-                                  key={`${dateKey}-${hour}`}
-                                >
-                                  {bookingsInCell.map((booking) => (
-                                    <div
-                                      key={booking.id}
-                                      className={`booking-block ${
-                                        isBookingActive(booking)
-                                          ? "booking-block-active"
-                                          : ""
-                                      } ${isBookingExpired(booking) ? "booking-block-expired" : ""}`}
-                                      style={{
-                                        backgroundColor: isBookingExpired(
-                                          booking,
-                                        )
-                                          ? undefined
-                                          : isBookingActive(booking)
-                                            ? "#16a34a"
-                                            : "#2563eb",
-                                        minHeight: `${computeBookingBlockHeight(booking, rowHeights)}px`,
-                                        marginTop: `${computeBookingBlockOffset(booking, rowHeights)}px`,
-                                      }}
-                                    >
-                                      <div className="booking-top-row">
-                                        <strong>{booking.name}</strong>
-                                      </div>
-                                      <span className="booking-time">
-                                        {booking.start} – {booking.end}
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        </main>
-
-        <footer className="footer">
-          <span>© 2026 I-LABS</span>
-          <span>Vista pubblica — sola lettura</span>
-        </footer>
-      </div>
-    );
-  }
 
   if (authLoading) {
     return (
