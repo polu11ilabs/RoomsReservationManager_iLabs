@@ -438,30 +438,17 @@ function App() {
 
         if (sessionError) {
           console.error("Errore recupero sessione:", sessionError);
-
           setSession(null);
           setProfile(null);
-
           return;
         }
 
-        /*
-         * ============================================================
-         * NESSUNA SESSIONE
-         * ============================================================
-         */
         if (!currentSession?.user) {
           setSession(null);
           setProfile(null);
-
           return;
         }
 
-        /*
-         * ============================================================
-         * CARICAMENTO PROFILO
-         * ============================================================
-         */
         const { data: userProfile, error: profileError } = await supabase
           .from("profiles")
           .select("*")
@@ -472,31 +459,15 @@ function App() {
 
         if (profileError || !userProfile) {
           console.error("Errore recupero profilo:", profileError);
-
           await supabase.auth.signOut();
-
           if (!mounted) return;
-
           setSession(null);
           setProfile(null);
-          setAuthLoading(false);
-
           return;
         }
 
-        console.log("RUOLO UTENTE:", userProfile.role);
-
-        /*
-         * ============================================================
-         * SALVATAGGIO SESSIONE E PROFILO
-         * ============================================================
-         */
         setSession(currentSession);
         setProfile(userProfile);
-
-        if (userProfile.role === "user" || userProfile.role === "admin") {
-          navigateTo("/Utenti");
-        }
       } catch (error) {
         console.error("Errore inizializzazione autenticazione:", error);
         if (!mounted) return;
