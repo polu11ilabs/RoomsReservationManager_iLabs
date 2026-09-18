@@ -437,8 +437,6 @@ function App() {
           setProfile(null);
           setAuthLoading(false);
 
-          navigateTo("/Autenticazione");
-
           return;
         }
 
@@ -451,14 +449,6 @@ function App() {
           setSession(null);
           setProfile(null);
           setAuthLoading(false);
-
-          /*
-           * Un utente non autenticato non può entrare in /Utenti.
-           * Può invece accedere a /Autenticazione e /Visitatori.
-           */
-          if (getCurrentPath() === "/Utenti") {
-            navigateTo("/Autenticazione");
-          }
 
           return;
         }
@@ -481,11 +471,11 @@ function App() {
 
           await supabase.auth.signOut();
 
+          if (!mounted) return;
+
           setSession(null);
           setProfile(null);
           setAuthLoading(false);
-
-          navigateTo("/Autenticazione");
 
           return;
         }
@@ -494,61 +484,12 @@ function App() {
 
         /*
          * ============================================================
-         * ACCOUNT PENDING
-         * ============================================================
-         *
-         * Il pending può stare su /Autenticazione e /Visitatori,
-         * ma NON può accedere a /Utenti.
-         */
-        if (userProfile.role === "pending") {
-          setSession(currentSession);
-          setProfile(userProfile);
-          setAuthLoading(false);
-
-          if (getCurrentPath() === "/Utenti") {
-            navigateTo("/Autenticazione");
-          }
-
-          return;
-        }
-
-        /*
-         * ============================================================
-         * ACCOUNT USER / ADMIN
+         * SALVATAGGIO SESSIONE E PROFILO
          * ============================================================
          */
-        if (userProfile.role === "user" || userProfile.role === "admin") {
-          setSession(currentSession);
-          setProfile(userProfile);
-          setAuthLoading(false);
-
-          /*
-           * Se l'utente autenticato apre /Autenticazione,
-           * viene portato automaticamente ai calendari.
-           *
-           * /Visitatori rimane invece accessibile.
-           */
-          if (getCurrentPath() === "/Autenticazione") {
-            navigateTo("/Utenti");
-          }
-
-          return;
-        }
-
-        /*
-         * ============================================================
-         * RUOLO NON VALIDO
-         * ============================================================
-         */
-        console.error("Ruolo non valido:", userProfile.role);
-
-        await supabase.auth.signOut();
-
-        setSession(null);
-        setProfile(null);
+        setSession(currentSession);
+        setProfile(userProfile);
         setAuthLoading(false);
-
-        navigateTo("/Autenticazione");
       } catch (error) {
         console.error("Errore inizializzazione autenticazione:", error);
 
@@ -557,8 +498,6 @@ function App() {
         setSession(null);
         setProfile(null);
         setAuthLoading(false);
-
-        navigateTo("/Autenticazione");
       }
     };
 
@@ -575,22 +514,25 @@ function App() {
       if (!mounted) return;
 
       /*
-       * Logout.
+       * Logout
        */
       if (event === "SIGNED_OUT") {
         setSession(null);
         setProfile(null);
         setAuthLoading(false);
 
-        navigateTo("/Autenticazione");
-
         return;
       }
 
       /*
-       * Aggiornamento del token.
+       * Login / sessione aggiornata
        */
-      if (event === "TOKEN_REFRESHED" && currentSession) {
+      if (
+        (event === "SIGNED_IN" ||
+          event === "INITIAL_SESSION" ||
+          event === "TOKEN_REFRESHED") &&
+        currentSession
+      ) {
         setSession(currentSession);
       }
     });
@@ -600,6 +542,47 @@ function App() {
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (authLoading) return;
+
+    const isAuthorized =
+      !!session &&
+      !!profile &&
+      (profile.role === "user" || profile.role === "admin");
+
+    const isPending = !!session && !!profile && profile.role === "pending";
+
+    /*
+     * USER / ADMIN
+     * Se sono nella pagina di autenticazione,
+     * vengono portati ai calendari.
+     */
+    if (currentPath === "/Autenticazione" && isAuthorized) {
+      window.history.replaceState({}, "", "/Utenti");
+      setCurrentPath("/Utenti");
+      return;
+    }
+
+    /*
+     * PENDING
+     * Non può entrare nei calendari.
+     */
+    if (currentPath === "/Utenti" && !isAuthorized) {
+      window.history.replaceState({}, "", "/Autenticazione");
+      setCurrentPath("/Autenticazione");
+      return;
+    }
+
+    /*
+     * Nessuna sessione:
+     * non può accedere ai calendari.
+     */
+    if (currentPath === "/Utenti" && !session) {
+      window.history.replaceState({}, "", "/Autenticazione");
+      setCurrentPath("/Autenticazione");
+    }
+  }, [authLoading, currentPath, session, profile]);
 
   /*
    * ============================================================
@@ -3383,41 +3366,6 @@ function App() {
             >
               Esci
             </button>
-          </div>
-        </div>
-      );
-    }
-
-    /*
-     * Se siamo su /Autenticazione e l'utente è già autenticato
-     * con un ruolo valido, lo mandiamo ai calendari.
-     */
-    if (
-      currentPath === "/Autenticazione" &&
-      session &&
-      profile &&
-      (profile.role === "user" || profile.role === "admin")
-    ) {
-      return (
-        <div
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "#f4f6f9",
-            fontFamily:
-              'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-          }}
-        >
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "18px", fontWeight: 600 }}>
-              Accesso già effettuato
-            </div>
-
-            <div style={{ marginTop: "8px", color: "#64748b" }}>
-              Reindirizzamento...
-            </div>
           </div>
         </div>
       );
