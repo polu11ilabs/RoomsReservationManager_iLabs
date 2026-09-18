@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import Visitatori from "./Visitatori";
 import DatePicker from "react-datepicker";
 import { supabase } from "./supabaseClient";
 import { it } from "date-fns/locale";
@@ -3531,7 +3532,6 @@ function App() {
 
               <button
                 type="button"
-                onClick={() => navigateTo("/Visitatori")}
                 style={{
                   width: "100%",
                   marginTop: "12px",
