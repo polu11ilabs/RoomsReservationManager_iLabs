@@ -4695,14 +4695,14 @@ function App() {
                                         : isBookingActive(booking)
                                           ? "#16a34a"
                                           : "#2563eb",
-                                      minHeight: `${computeBookingBlockHeight(
-                                        booking,
-                                        rowHeights,
-                                      )}px`,
-                                      marginTop: `${computeBookingBlockOffset(
-                                        booking,
-                                        rowHeights,
-                                      )}px`,
+                                      minHeight: `${
+                                        measuredBookingHeights[booking.id] ||
+                                        computeBookingBlockHeight(
+                                          booking,
+                                          rowHeights,
+                                        )
+                                      }px`,
+                                      marginTop: `${computeBookingBlockOffset(booking, rowHeights)}px`,
                                     }}
                                     draggable={
                                       !isBookingExpired(booking) &&
