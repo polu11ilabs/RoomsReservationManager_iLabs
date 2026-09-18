@@ -1720,7 +1720,7 @@ function App() {
    */
 
   useEffect(() => {
-    const isVisitorPage = currentPath === "/Visitatori";
+    const isVisitorPage = currentPath === "/visitatori";
 
     if (!session?.user && !isVisitorPage) {
       setRooms([]);
@@ -1744,7 +1744,7 @@ function App() {
    */
 
   useEffect(() => {
-    if (!session?.user && currentPath !== "/Visitatori") {
+    if (!session?.user && currentPath !== "/visitatori") {
       return;
     }
 
@@ -1791,7 +1791,7 @@ function App() {
   }, [session?.user?.id, profile?.id]);
 
   useEffect(() => {
-    if (currentPath === "/Visitatori" && !session?.user) {
+    if (currentPath === "/visitatori" && !session?.user) {
       setLoadingRooms(true);
       loadData();
     }
@@ -3553,7 +3553,7 @@ function App() {
     );
   }
 
-  if (currentPath === "/Visitatori") {
+  if (currentPath === "/visitatori") {
     return (
       <div className="app">
         <header className="header">
