@@ -305,7 +305,7 @@ function App() {
    */
 
   const getCurrentPath = () => {
-    return "/autenticazione";
+    return "/Autenticazione";
   };
 
   const [currentPath, setCurrentPath] = useState(getCurrentPath);
@@ -447,6 +447,12 @@ function App() {
 
         setSession(currentSession);
         setProfile(userProfile);
+
+        if (userProfile.role === "user" || userProfile.role === "admin") {
+          setCurrentPath("/Utenti");
+        } else if (userProfile.role === "pending") {
+          setCurrentPath("/Autenticazione");
+        }
       } catch (error) {
         console.error("Errore inizializzazione autenticazione:", error);
         if (!mounted) return;
@@ -473,7 +479,7 @@ function App() {
         setSession(null);
         setProfile(null);
         setAuthLoading(false);
-        navigateTo("/autenticazione");
+        setCurrentPath("/Autenticazione");
         return;
       }
 
@@ -692,8 +698,8 @@ function App() {
         setAuthSubmitting(false);
 
         // Il pending deve rimanere autenticato e nella pagina Autenticazione.
-        window.history.replaceState({}, "", "/autenticazione");
-        setCurrentPath("/autenticazione");
+        window.history.replaceState({}, "", "/Autenticazione");
+        setCurrentPath("/Autenticazione");
 
         return;
       }
@@ -713,7 +719,7 @@ function App() {
 
         setAuthSubmitting(false);
 
-        navigateTo("/autenticazione");
+        navigateTo("/Autenticazione");
 
         return;
       }
@@ -732,7 +738,7 @@ function App() {
       setAuthSubmitting(false);
 
       localStorage.setItem("ilabs_logged_in", "true");
-      navigateTo("/utenti");
+      navigateTo("/Utenti");
     } catch (error) {
       console.error("Errore login:", error);
 
@@ -775,7 +781,7 @@ function App() {
 
     setAuthMode("login");
 
-    navigateTo("/autenticazione");
+    navigateTo("/Autenticazione");
   };
 
   /*
@@ -1714,7 +1720,7 @@ function App() {
    */
 
   useEffect(() => {
-    const isVisitorPage = currentPath === "/visitatori";
+    const isVisitorPage = currentPath === "/Visitatori";
 
     if (!session?.user && !isVisitorPage) {
       setRooms([]);
@@ -1738,7 +1744,7 @@ function App() {
    */
 
   useEffect(() => {
-    if (!session?.user && currentPath !== "/visitatori") {
+    if (!session?.user && currentPath !== "/Visitatori") {
       return;
     }
 
@@ -1785,7 +1791,7 @@ function App() {
   }, [session?.user?.id, profile?.id]);
 
   useEffect(() => {
-    if (currentPath === "/visitatori" && !session?.user) {
+    if (currentPath === "/Visitatori" && !session?.user) {
       setLoadingRooms(true);
       loadData();
     }
@@ -3206,13 +3212,13 @@ function App() {
     session &&
     profile &&
     (profile.role === "user" || profile.role === "admin") &&
-    currentPath === "/autenticazione"
+    currentPath === "/Autenticazione"
   ) {
-    navigateTo("/utenti");
+    navigateTo("/Utenti");
     return null;
   }
 
-  if (currentPath === "/autenticazione") {
+  if (currentPath === "/Autenticazione") {
     /*
      * Account pending.
      */
@@ -3525,7 +3531,7 @@ function App() {
 
               <button
                 type="button"
-                onClick={() => navigateTo("/visitatori")}
+                onClick={() => navigateTo("/Visitatori")}
                 style={{
                   width: "100%",
                   marginTop: "12px",
@@ -3547,7 +3553,7 @@ function App() {
     );
   }
 
-  if (currentPath === "/visitatori") {
+  if (currentPath === "/Visitatori") {
     return (
       <div className="app">
         <header className="header">
@@ -3561,7 +3567,7 @@ function App() {
 
           <button
             type="button"
-            onClick={() => navigateTo("/autenticazione")}
+            onClick={() => navigateTo("/Autenticazione")}
             style={{
               padding: "10px 16px",
               border: "1px solid rgba(255,255,255,0.25)",
@@ -3868,14 +3874,14 @@ function App() {
   }
 
   if (
-    currentPath === "/utenti" &&
+    currentPath === "/Utenti" &&
     !authLoading &&
     !sessionStorage.getItem("ilabs_path") &&
     (!session ||
       !profile ||
       (profile.role !== "user" && profile.role !== "admin"))
   ) {
-    navigateTo("/autenticazione");
+    navigateTo("/Autenticazione");
     return null;
   }
 
@@ -3884,11 +3890,11 @@ function App() {
    * previsti, torniamo alla pagina di autenticazione.
    */
   if (
-    currentPath !== "/utenti" &&
-    currentPath !== "/autenticazione" &&
-    currentPath !== "/visitatori"
+    currentPath !== "/Utenti" &&
+    currentPath !== "/Autenticazione" &&
+    currentPath !== "/Visitatori"
   ) {
-    navigateTo("/autenticazione");
+    navigateTo("/Autenticazione");
     return null;
   }
 
@@ -3907,7 +3913,7 @@ function App() {
           <div style={{ textAlign: "center" }}>
             <h2>Disponibilità sale</h2>
             <p>Vista pubblica in preparazione.</p>
-            <button type="button" onClick={() => navigateTo("/autenticazione")}>
+            <button type="button" onClick={() => navigateTo("/Autenticazione")}>
               Torna al login
             </button>
           </div>
