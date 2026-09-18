@@ -305,14 +305,18 @@ function App() {
    */
 
   const getCurrentPath = () => {
+    const path = window.location.pathname.toLowerCase();
+    if (path === "/visitatori" || path === "/visitatori/") {
+      return "/Visitatori";
+    }
     return "/Autenticazione";
   };
 
   const [currentPath, setCurrentPath] = useState(getCurrentPath);
 
   const navigateTo = (path) => {
+    window.history.pushState({}, "", path);
     setCurrentPath(path);
-    sessionStorage.setItem("ilabs_path", path);
   };
 
   const handleBrowserNavigation = () => {
