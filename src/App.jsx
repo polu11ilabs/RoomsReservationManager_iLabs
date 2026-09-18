@@ -288,22 +288,6 @@ const computeBookingBlockOffset = (booking, rowHeights) => {
 const dayNames = ["LUN", "MAR", "MER", "GIO", "VEN"];
 
 function App() {
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: "40px",
-        fontWeight: "bold",
-      }}
-    >
-      APP FUNZIONA
-    </div>
-  );
-
-  // tutto il resto del codice di App viene temporaneamente lasciato sotto
   /*
    * ============================================================
    * AUTENTICAZIONE
@@ -774,14 +758,15 @@ function App() {
         setProfile(profileData);
 
         setAuthError("");
-
         setAuthMessage(
           "Il tuo account è in attesa di approvazione da parte di un amministratore.",
         );
 
         setAuthSubmitting(false);
 
-        navigateTo("/Autenticazione");
+        // Il pending deve rimanere autenticato e nella pagina Autenticazione.
+        window.history.replaceState({}, "", "/Autenticazione");
+        setCurrentPath("/Autenticazione");
 
         return;
       }
