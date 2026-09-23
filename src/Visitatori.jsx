@@ -767,7 +767,7 @@ function Visitatori() {
 
   return (
     <div className="app">
-            <header className="header">
+      <header className="header">
         <div className="brand">
           <div className="brand-logo">I-LABS</div>
 
@@ -779,22 +779,15 @@ function Visitatori() {
         </div>
 
         <div className="user">
-          <button
-            type="button"
-            onClick={() => window.location.href = "/"}
-            style={{
-              padding: "8px 16px",
-              border: "1px solid #dfe3e9",
-              borderRadius: "8px",
-              background: "white",
-              color: "#4b5563",
-              fontSize: "13px",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            ← Torna alla home
-          </button>
+          <div className="user-profile-button">
+            <div className="user-avatar">V</div>
+
+            <div className="user-info">
+              <strong>Visitatore</strong>
+
+              <span>Solo visualizzazione</span>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -1090,8 +1083,7 @@ function Visitatori() {
                                         left: 0,
                                         right: 0,
                                         height: `${pastFraction * 100}%`,
-                                        backgroundColor:
-                                          "rgba(148, 163, 184, 0.35)",
+                                        backgroundColor: "#f1f2f4",
                                         zIndex: 1,
                                         pointerEvents: "none",
                                       }}
