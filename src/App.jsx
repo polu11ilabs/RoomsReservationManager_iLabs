@@ -793,10 +793,19 @@ function App() {
    */
 
   useEffect(() => {
-    const intervalId = setInterval(() => forceMinuteTick((t) => t + 1), 1000);
-    return () => clearInterval(intervalId);
+    const now = new Date();
+    const msToNextMinute =
+      (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+    let intervalId = null;
+    const timeoutId = setTimeout(() => {
+      forceMinuteTick((t) => t + 1);
+      intervalId = setInterval(() => forceMinuteTick((t) => t + 1), 60000);
+    }, msToNextMinute);
+    return () => {
+      clearTimeout(timeoutId);
+      if (intervalId) clearInterval(intervalId);
+    };
   }, []);
-
   /*
    * ============================================================
    * UTENTE ATTUALE
@@ -1860,21 +1869,12 @@ function App() {
       date.getMonth() === now.getMonth() &&
       date.getDate() === now.getDate();
 
-    if (!isSameDay) {
-      return 0;
-    }
+    if (!isSameDay) return 0;
+    if (now.getHours() > hour) return 1;
+    if (now.getHours() < hour) return 0;
 
-    if (now.getHours() > hour) {
-      return 1;
-    }
-
-    if (now.getHours() < hour) {
-      return 0;
-    }
-
-    return (now.getMinutes() * 60 + now.getSeconds()) / 3600;
+    return now.getMinutes() / 60;
   };
-
   const getMinStartTimeForSlot = (date, hour) => {
     const now = new Date();
 
