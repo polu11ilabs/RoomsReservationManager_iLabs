@@ -354,6 +354,8 @@ function App() {
   const [editRoomColor, setEditRoomColor] = useState("#2563eb");
   const [savingRoom, setSavingRoom] = useState(false);
 
+  const [, forceMinuteTick] = useState(0);
+
   useEffect(() => {
     const handler = () => forceMinuteTick((t) => t + 1);
     window.addEventListener("showlogin", handler);
@@ -790,9 +792,6 @@ function App() {
    * ============================================================
    */
 
-  const [, forceMinuteTick] = useState(0);
-
-  // DOPO
   useEffect(() => {
     const now = new Date();
     const msToNextMinute =
@@ -4179,26 +4178,6 @@ function App() {
                             const fillFraction = past
                               ? 1
                               : getSlotFillFraction(date, hour);
-
-                            /*
-                             * ============================================================
-                             * INDISPONIBILITÀ SALA
-                             * ============================================================
-                             *
-                             * Calcoliamo esattamente quale parte dell'ora è coperta
-                             * dall'indisponibilità.
-                             *
-                             * Esempio:
-                             *
-                             * 14:30 -> 16:30
-                             *
-                             * 14:00-15:00 = 50%
-                             * 15:00-16:00 = 100%
-                             * 16:00-17:00 = 50%
-                             *
-                             * Inoltre la parte già trascorsa dell'ora corrente
-                             * non viene colorata di giallo.
-                             */
 
                             const cellStart = new Date(date);
                             cellStart.setHours(hour, 0, 0, 0);
