@@ -4624,7 +4624,7 @@ function App() {
                                   );
                                 }}
                               >
-                                {fillFraction > 0 && (
+                                {!past && fillFraction > 0 && (
                                   <div
                                     className="calendar-cell-fill"
                                     style={{
