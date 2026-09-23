@@ -397,6 +397,7 @@ button {
   position: relative;
   border-right: 1px solid #edf0f4;
   background: #ffffff;
+  height: 100%;
 }
 
 .calendar-row:last-child {
@@ -607,7 +608,7 @@ button {
 }
 
 .calendar-cell-fill {
-  display: none;
+  display: block;
 }
 
 .booking-time {
