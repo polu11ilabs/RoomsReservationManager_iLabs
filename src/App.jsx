@@ -4624,7 +4624,7 @@ function App() {
                                   );
                                 }}
                               >
-                                {!past && fillFraction > 0 && (
+                                {fillFraction > 0 && fillFraction < 1 && (
                                   <div
                                     className="calendar-cell-fill"
                                     style={{
@@ -4632,7 +4632,6 @@ function App() {
                                     }}
                                   />
                                 )}
-
                                 {hasUnavailable && (
                                   <div
                                     className="calendar-cell-unavailable"
