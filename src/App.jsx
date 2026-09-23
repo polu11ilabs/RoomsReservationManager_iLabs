@@ -793,19 +793,10 @@ function App() {
    */
 
   useEffect(() => {
-    const now = new Date();
-    const msToNextMinute =
-      (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
-    let intervalId = null;
-    const timeoutId = setTimeout(() => {
-      forceMinuteTick((t) => t + 1);
-      intervalId = setInterval(() => forceMinuteTick((t) => t + 1), 60000);
-    }, msToNextMinute);
-    return () => {
-      clearTimeout(timeoutId);
-      if (intervalId) clearInterval(intervalId);
-    };
+    const intervalId = setInterval(() => forceMinuteTick((t) => t + 1), 1000);
+    return () => clearInterval(intervalId);
   }, []);
+
   /*
    * ============================================================
    * UTENTE ATTUALE
