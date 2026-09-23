@@ -1863,14 +1863,6 @@ function App() {
   };
 
   const getSlotFillFraction = (date, hour) => {
-    console.log(
-      "fill result ora",
-      hour,
-      "ora attuale",
-      now.getHours(),
-      "result",
-      result,
-    );
     const now = new Date();
 
     const isSameDay =
@@ -4632,7 +4624,7 @@ function App() {
                                   );
                                 }}
                               >
-                                {!past && fillFraction > 0 && (
+                                {fillFraction > 0 && (
                                   <div
                                     className="calendar-cell-fill"
                                     style={{
