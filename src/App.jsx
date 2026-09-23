@@ -231,6 +231,8 @@ const REASON_LINE_HEIGHT = 15;
 const BOOKING_BASE_HEIGHT = 52;
 const ROW_DEFAULT_HEIGHT = 60;
 
+const BOOKING_VISUAL_GAP = 4;
+
 const estimateBookingContentHeight = (booking) => {
   if (!booking.reason) {
     return BOOKING_BASE_HEIGHT;
@@ -264,12 +266,16 @@ const computeBookingBlockHeight = (booking, rowHeights) => {
     const overlapStart = Math.max(startMinutes, hourStart);
     const overlapEnd = Math.min(endMinutes, hourEnd);
 
+    if (overlapEnd <= overlapStart) {
+      continue;
+    }
+
     const fraction = (overlapEnd - overlapStart) / 60;
 
     total += rowHeight * fraction;
   }
 
-  return Math.max(20, total - 2);
+  return total;
 };
 
 const computeBookingBlockOffset = (booking, rowHeights) => {
@@ -3955,45 +3961,158 @@ function App() {
                 year: "numeric",
               })}`;
 
-              const rowHeights = Array.from({ length: 10 }, (_, index) => {
+              const rowHeights = Array(10).fill(ROW_DEFAULT_HEIGHT);
+
+              for (let index = 0; index < 10; index += 1) {
                 const hour = index + 8;
+
                 let neededHeight = ROW_DEFAULT_HEIGHT;
 
                 weekDays.forEach((date) => {
                   const dateKey = formatDateKey(date);
 
-                  const bookingsStartingInCell = room.bookings.filter(
-                    (item) => {
-                      if (item.day !== dateKey) return false;
-                      const start = timeToMinutes(item.start);
-                      return start >= hour * 60 && start < (hour + 1) * 60;
-                    },
-                  );
+                  room.bookings
+                    .filter((booking) => booking.day === dateKey)
+                    .forEach((booking) => {
+                      const startMinutes = timeToMinutes(booking.start);
+                      const endMinutes = timeToMinutes(booking.end);
 
-                  bookingsStartingInCell.forEach((booking) => {
-                    const minutesIntoHour = timeToMinutes(booking.start) % 60;
-                    const fraction = minutesIntoHour / 60;
-                    const contentHeight =
-                      estimateBookingContentHeight(booking) + 8;
+                      /*
+                       * La prenotazione deve terminare dentro questa riga.
+                       *
+                       * Esempio:
+                       * 15:45 - 16:00
+                       * termina nella riga 15:00.
+                       *
+                       * 15:45 - 16:20
+                       * termina nella riga 16:00.
+                       */
+                      const endHour = Math.floor((endMinutes - 1) / 60);
 
-                    // La cella deve essere alta abbastanza che,
-                    // partendo da `fraction * rowHeight`, ci stia `contentHeight`.
-                    // Quindi: rowHeight - fraction * rowHeight >= contentHeight
-                    // => rowHeight * (1 - fraction) >= contentHeight
-                    // => rowHeight >= contentHeight / (1 - fraction)
-                    const required =
-                      fraction < 1
-                        ? contentHeight / (1 - fraction)
-                        : contentHeight;
+                      if (hour !== endHour) {
+                        return;
+                      }
 
-                    if (required > neededHeight) {
-                      neededHeight = required;
-                    }
-                  });
+                      const requiredHeight =
+                        estimateBookingContentHeight(booking) + 8;
+
+                      /*
+                       * Calcoliamo quanto spazio della prenotazione
+                       * è già disponibile nelle righe precedenti
+                       * alla riga finale.
+                       *
+                       * Usiamo le altezze REALI delle righe già calcolate,
+                       * non sempre 60px.
+                       */
+                      let availableBeforeEndRow = 0;
+
+                      const startHour = Math.floor(startMinutes / 60);
+
+                      for (
+                        let bookingHour = startHour;
+                        bookingHour < hour;
+                        bookingHour += 1
+                      ) {
+                        const bookingRowIndex = bookingHour - 8;
+
+                        if (
+                          bookingRowIndex < 0 ||
+                          bookingRowIndex >= rowHeights.length
+                        ) {
+                          continue;
+                        }
+
+                        const bookingHourStart = bookingHour * 60;
+                        const bookingHourEnd = (bookingHour + 1) * 60;
+
+                        const overlapStart = Math.max(
+                          startMinutes,
+                          bookingHourStart,
+                        );
+
+                        const overlapEnd = Math.min(endMinutes, bookingHourEnd);
+
+                        if (overlapEnd <= overlapStart) {
+                          continue;
+                        }
+
+                        const fraction = (overlapEnd - overlapStart) / 60;
+
+                        availableBeforeEndRow +=
+                          rowHeights[bookingRowIndex] * fraction;
+                      }
+
+                      /*
+                       * Calcoliamo quale parte della riga corrente
+                       * viene occupata dalla prenotazione.
+                       *
+                       * Esempio:
+                       *
+                       * 15:45 - 16:00
+                       * -> 15 minuti = 25% della riga 15.
+                       *
+                       * 15:45 - 16:15
+                       * -> tutta la parte 15:45-16:00 = 25%
+                       *    nella riga 15 e 16:00-16:15 = 25%
+                       *    nella riga 16.
+                       */
+                      const currentHourStart = hour * 60;
+                      const currentHourEnd = (hour + 1) * 60;
+
+                      const overlapStart = Math.max(
+                        startMinutes,
+                        currentHourStart,
+                      );
+
+                      const overlapEnd = Math.min(endMinutes, currentHourEnd);
+
+                      if (overlapEnd <= overlapStart) {
+                        return;
+                      }
+
+                      const currentRowFraction =
+                        (overlapEnd - overlapStart) / 60;
+
+                      /*
+                       * Quanto spazio ci sarebbe nella riga corrente
+                       * mantenendola alla sua altezza normale.
+                       */
+                      const currentRowDefaultSpace =
+                        ROW_DEFAULT_HEIGHT * currentRowFraction;
+
+                      const totalDefaultAvailable =
+                        availableBeforeEndRow + currentRowDefaultSpace;
+
+                      /*
+                       * Se il blocco entra già perfettamente,
+                       * lasciamo la riga a 60px.
+                       */
+                      if (requiredHeight <= totalDefaultAvailable) {
+                        return;
+                      }
+
+                      /*
+                       * Lo spazio che deve essere aggiunto alla riga finale.
+                       *
+                       * La formula tiene conto anche delle righe
+                       * precedenti che potrebbero essere già state
+                       * allungate da altre prenotazioni.
+                       */
+                      const remainingHeight =
+                        requiredHeight - availableBeforeEndRow;
+
+                      const requiredCurrentRowHeight =
+                        remainingHeight / currentRowFraction;
+
+                      neededHeight = Math.max(
+                        neededHeight,
+                        requiredCurrentRowHeight,
+                      );
+                    });
                 });
 
-                return Math.ceil(neededHeight);
-              });
+                rowHeights[index] = Math.ceil(neededHeight);
+              }
 
               return (
                 <div className="calendar-room" key={room.id}>
@@ -4724,23 +4843,34 @@ function App() {
                                               : isBookingActive(booking)
                                                 ? "#16a34a"
                                                 : "#2563eb",
+
                                             position: "absolute",
-                                            top: `${computeBookingBlockOffset(booking, rowHeights)}px`,
-                                            left,
-                                            width,
+
+                                            top: `${
+                                              computeBookingBlockOffset(
+                                                booking,
+                                                rowHeights,
+                                              ) + BOOKING_VISUAL_GAP
+                                            }px`,
+
+                                            left: `calc(${left} + ${BOOKING_VISUAL_GAP}px)`,
+
+                                            width: `calc(${width} - ${BOOKING_VISUAL_GAP * 2}px)`,
+
                                             right: "auto",
-                                            height: `${Math.max(
+
+                                            height: `max(0px, ${
                                               computeBookingBlockHeight(
                                                 booking,
                                                 rowHeights,
-                                              ),
-                                              estimateBookingContentHeight(
-                                                booking,
-                                              ) + 8,
-                                            )}px`,
-                                            minHeight: `${estimateBookingContentHeight(booking) + 8}px`,
+                                              ) -
+                                              BOOKING_VISUAL_GAP * 2
+                                            }px)`,
+
                                             boxSizing: "border-box",
                                             overflow: "hidden",
+
+                                            borderRadius: "8px",
                                           }}
                                           draggable={
                                             !isBookingExpired(booking) &&
