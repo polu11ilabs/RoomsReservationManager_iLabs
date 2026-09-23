@@ -790,7 +790,10 @@ function Visitatori() {
           </div>
           <button
             type="button"
-            onClick={() => (window.location.href = "/Autenticazione")}
+            onClick={() => {
+              window.history.pushState({}, "", "/Autenticazione");
+              window.dispatchEvent(new PopStateEvent("popstate"));
+            }}
             style={{
               marginLeft: "15px",
               padding: "8px 12px",
