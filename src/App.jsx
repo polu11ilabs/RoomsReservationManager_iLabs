@@ -3971,33 +3971,20 @@ function App() {
                   );
 
                   bookingsStartingInCell.forEach((booking) => {
-                    const duration =
-                      timeToMinutes(booking.end) - timeToMinutes(booking.start);
-
-                    // Per prenotazioni multi-ora, la riga di partenza
-                    // deve contenere solo la parte fino a fine ora
                     const minutesIntoHour = timeToMinutes(booking.start) % 60;
+                    const fraction = minutesIntoHour / 60;
                     const contentHeight =
                       estimateBookingContentHeight(booking) + 8;
 
-                    const fraction = minutesIntoHour / 60;
-
-                    if (fraction >= 1) return;
-
-                    let required;
-                    if (duration <= 60) {
-                      required = contentHeight / (1 - fraction);
-                    } else {
-                      required =
-                        (minutesIntoHour / 60) * ROW_DEFAULT_HEIGHT +
-                        contentHeight;
-
-                      const proportionalInThisRow =
-                        ((60 - minutesIntoHour) / 60) * ROW_DEFAULT_HEIGHT;
-                      if (proportionalInThisRow >= contentHeight) {
-                        required = ROW_DEFAULT_HEIGHT;
-                      }
-                    }
+                    // La cella deve essere alta abbastanza che,
+                    // partendo da `fraction * rowHeight`, ci stia `contentHeight`.
+                    // Quindi: rowHeight - fraction * rowHeight >= contentHeight
+                    // => rowHeight * (1 - fraction) >= contentHeight
+                    // => rowHeight >= contentHeight / (1 - fraction)
+                    const required =
+                      fraction < 1
+                        ? contentHeight / (1 - fraction)
+                        : contentHeight;
 
                     if (required > neededHeight) {
                       neededHeight = required;
