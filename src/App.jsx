@@ -269,7 +269,7 @@ const computeBookingBlockHeight = (booking, rowHeights) => {
     total += rowHeight * fraction;
   }
 
-  return Math.max(20, total - 8);
+  return Math.max(20, total - 2);
 };
 
 const computeBookingBlockOffset = (booking, rowHeights) => {
@@ -792,12 +792,20 @@ function App() {
 
   const [, forceMinuteTick] = useState(0);
 
+  // DOPO
   useEffect(() => {
-    const intervalId = setInterval(() => {
-      forceMinuteTick((tick) => tick + 1);
-    }, 60000);
-
-    return () => clearInterval(intervalId);
+    const now = new Date();
+    const msToNextMinute =
+      (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+    let intervalId = null;
+    const timeoutId = setTimeout(() => {
+      forceMinuteTick((t) => t + 1);
+      intervalId = setInterval(() => forceMinuteTick((t) => t + 1), 60000);
+    }, msToNextMinute);
+    return () => {
+      clearTimeout(timeoutId);
+      if (intervalId) clearInterval(intervalId);
+    };
   }, []);
 
   /*
@@ -1875,7 +1883,7 @@ function App() {
       return 0;
     }
 
-    return now.getMinutes() / 60;
+    return (now.getMinutes() * 60 + now.getSeconds()) / 3600;
   };
 
   const getMinStartTimeForSlot = (date, hour) => {
@@ -3974,11 +3982,8 @@ function App() {
                       return;
                     }
 
-                    const measured = measuredBookingHeights[booking.id];
-
-                    const contentHeight = measured
-                      ? measured + 8
-                      : estimateBookingContentHeight(booking) + 8;
+                    const contentHeight =
+                      estimateBookingContentHeight(booking) + 8;
 
                     const startMinutes = timeToMinutes(booking.start);
 
@@ -4665,40 +4670,48 @@ function App() {
                                 )}
 
                                 {(() => {
-                                  // Raggruppa le prenotazioni in colonne per evitare sovrapposizioni
                                   const columns = [];
-
-                                  bookingsInCell.forEach((booking) => {
+                                  const sortedBookings = [
+                                    ...bookingsInCell,
+                                  ].sort(
+                                    (a, b) =>
+                                      timeToMinutes(a.start) -
+                                      timeToMinutes(b.start),
+                                  );
+                                  sortedBookings.forEach((booking) => {
                                     const bookingStart = timeToMinutes(
                                       booking.start,
                                     );
                                     const bookingEnd = timeToMinutes(
                                       booking.end,
                                     );
-
                                     let placed = false;
-
                                     for (
                                       let col = 0;
                                       col < columns.length;
                                       col++
                                     ) {
-                                      const lastInCol =
-                                        columns[col][columns[col].length - 1];
-                                      const lastEnd = timeToMinutes(
-                                        lastInCol.end,
+                                      const hasOverlap = columns[col].some(
+                                        (existing) => {
+                                          const existingStart = timeToMinutes(
+                                            existing.start,
+                                          );
+                                          const existingEnd = timeToMinutes(
+                                            existing.end,
+                                          );
+                                          return (
+                                            bookingStart < existingEnd &&
+                                            bookingEnd > existingStart
+                                          );
+                                        },
                                       );
-
-                                      if (bookingStart >= lastEnd) {
+                                      if (!hasOverlap) {
                                         columns[col].push(booking);
                                         placed = true;
                                         break;
                                       }
                                     }
-
-                                    if (!placed) {
-                                      columns.push([booking]);
-                                    }
+                                    if (!placed) columns.push([booking]);
                                   });
 
                                   const totalCols = columns.length;
@@ -4739,20 +4752,23 @@ function App() {
                                               : isBookingActive(booking)
                                                 ? "#16a34a"
                                                 : "#2563eb",
-                                            minHeight: `${
-                                              measuredBookingHeights[
-                                                booking.id
-                                              ] ||
-                                              computeBookingBlockHeight(
-                                                booking,
-                                                rowHeights,
-                                              )
-                                            }px`,
                                             position: "absolute",
                                             top: `${computeBookingBlockOffset(booking, rowHeights)}px`,
                                             left,
                                             width,
                                             right: "auto",
+                                            height: `${Math.max(
+                                              computeBookingBlockHeight(
+                                                booking,
+                                                rowHeights,
+                                              ),
+                                              estimateBookingContentHeight(
+                                                booking,
+                                              ) + 8,
+                                            )}px`,
+                                            minHeight: `${estimateBookingContentHeight(booking) + 8}px`,
+                                            boxSizing: "border-box",
+                                            overflow: "hidden",
                                           }}
                                           draggable={
                                             !isBookingExpired(booking) &&
