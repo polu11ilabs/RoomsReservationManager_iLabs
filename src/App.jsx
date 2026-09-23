@@ -4735,6 +4735,8 @@ function App() {
                                     className="calendar-cell-fill"
                                     style={{
                                       height: `${fillFraction * 100}%`,
+                                      minHeight: 0,
+                                      display: "block",
                                     }}
                                   />
                                 )}
