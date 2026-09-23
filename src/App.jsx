@@ -1860,12 +1860,21 @@ function App() {
       date.getMonth() === now.getMonth() &&
       date.getDate() === now.getDate();
 
-    if (!isSameDay) return 0;
-    if (now.getHours() > hour) return 1;
-    if (now.getHours() < hour) return 0;
+    if (!isSameDay) {
+      return 0;
+    }
 
-    return now.getMinutes() / 60;
+    if (now.getHours() > hour) {
+      return 1;
+    }
+
+    if (now.getHours() < hour) {
+      return 0;
+    }
+
+    return (now.getMinutes() * 60 + now.getSeconds()) / 3600;
   };
+
   const getMinStartTimeForSlot = (date, hour) => {
     const now = new Date();
 
