@@ -788,6 +788,23 @@ function Visitatori() {
               <span>Solo visualizzazione</span>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => (window.location.href = "/Autenticazione")}
+            style={{
+              marginLeft: "15px",
+              padding: "8px 12px",
+              border: "1px solid #dfe3e9",
+              borderRadius: "7px",
+              background: "white",
+              color: "#172033",
+              cursor: "pointer",
+              fontWeight: 600,
+              fontSize: "13px",
+            }}
+          >
+            Accedi
+          </button>
         </div>
       </header>
 
