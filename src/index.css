@@ -400,6 +400,7 @@ button {
   position: relative;
   overflow: visible;
   border-right: 1px solid #edf0f4;
+  height: 100%;
 }
 
 .calendar-cell:last-child {
@@ -610,13 +611,16 @@ button {
   top: 0;
   left: 0;
   right: 0;
+  bottom: 0;
   z-index: 1;
 
   background: #f1f2f4;
 
   pointer-events: none;
-}
 
+  transform: scaleY(var(--fill-fraction, 1));
+  transform-origin: top;
+}
 .calendar-cell-unavailable {
   position: absolute;
   left: 0;
