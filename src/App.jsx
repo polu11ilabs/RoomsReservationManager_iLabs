@@ -3958,48 +3958,55 @@ function App() {
 
               const rowHeights = Array.from({ length: 10 }, (_, index) => {
                 const hour = index + 8;
-
                 let neededHeight = ROW_DEFAULT_HEIGHT;
 
                 weekDays.forEach((date) => {
                   const dateKey = formatDateKey(date);
 
-                  const bookingsInCell = room.bookings.filter((item) => {
-                    if (item.day !== dateKey) {
-                      return false;
-                    }
+                  const bookingsStartingInCell = room.bookings.filter(
+                    (item) => {
+                      if (item.day !== dateKey) return false;
+                      const start = timeToMinutes(item.start);
+                      return start >= hour * 60 && start < (hour + 1) * 60;
+                    },
+                  );
 
-                    const start = timeToMinutes(item.start);
-
-                    return start >= hour * 60 && start < (hour + 1) * 60;
-                  });
-
-                  bookingsInCell.forEach((booking) => {
+                  bookingsStartingInCell.forEach((booking) => {
                     const duration =
                       timeToMinutes(booking.end) - timeToMinutes(booking.start);
 
-                    if (duration > 60) {
-                      return;
-                    }
-
+                    // Per prenotazioni multi-ora, la riga di partenza
+                    // deve contenere solo la parte fino a fine ora
+                    const minutesIntoHour = timeToMinutes(booking.start) % 60;
                     const contentHeight =
                       estimateBookingContentHeight(booking) + 8;
 
-                    const startMinutes = timeToMinutes(booking.start);
+                    const fraction = minutesIntoHour / 60;
 
-                    const minutesIntoHour = startMinutes % 60;
+                    if (fraction >= 1) return;
 
-                    const offset = (minutesIntoHour / 60) * ROW_DEFAULT_HEIGHT;
+                    let required;
+                    if (duration <= 60) {
+                      required = contentHeight / (1 - fraction);
+                    } else {
+                      required =
+                        (minutesIntoHour / 60) * ROW_DEFAULT_HEIGHT +
+                        contentHeight;
 
-                    const requiredHeight = offset + contentHeight;
+                      const proportionalInThisRow =
+                        ((60 - minutesIntoHour) / 60) * ROW_DEFAULT_HEIGHT;
+                      if (proportionalInThisRow >= contentHeight) {
+                        required = ROW_DEFAULT_HEIGHT;
+                      }
+                    }
 
-                    if (requiredHeight > neededHeight) {
-                      neededHeight = requiredHeight;
+                    if (required > neededHeight) {
+                      neededHeight = required;
                     }
                   });
                 });
 
-                return neededHeight;
+                return Math.ceil(neededHeight);
               });
 
               return (
