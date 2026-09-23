@@ -1863,6 +1863,7 @@ function App() {
   };
 
   const getSlotFillFraction = (date, hour) => {
+    console.log("fill chiamata", hour);
     const now = new Date();
 
     const isSameDay =
