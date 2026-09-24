@@ -313,7 +313,6 @@ function App() {
   const getCurrentPath = () => {
     const path = window.location.pathname;
     if (path === "/Utenti" || path === "/Visitatori") {
-      sessionStorage.setItem("ilabs_path", path);
       return path;
     }
     const saved = sessionStorage.getItem("ilabs_path");
@@ -327,7 +326,6 @@ function App() {
 
   const navigateTo = (path) => {
     window.history.pushState({}, "", path);
-    sessionStorage.setItem("ilabs_path", path);
     setCurrentPath(path);
   };
 
@@ -777,7 +775,6 @@ function App() {
    */
 
   const handleLogout = async () => {
-    sessionStorage.removeItem("ilabs_path");
     const { error } = await supabase.auth.signOut();
 
     if (error) {
@@ -3568,36 +3565,38 @@ function App() {
     );
   }
 
-if (authLoading || (session && !profile)) {
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#f4f6f9",
-      }}
-    >
+  if (authLoading || (session && !profile)) {
+    return (
       <div
         style={{
-          padding: "30px",
-          borderRadius: "16px",
-          background: "#ffffff",
-          boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-          textAlign: "center",
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#f4f6f9",
         }}
       >
-        <div style={{ fontSize: "18px", fontWeight: 700, marginBottom: "8px" }}>
-          Caricamento...
-        </div>
-        <div style={{ fontSize: "14px", color: "#64748b" }}>
-          Verifica dell'account in corso
+        <div
+          style={{
+            padding: "30px",
+            borderRadius: "16px",
+            background: "#ffffff",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{ fontSize: "18px", fontWeight: 700, marginBottom: "8px" }}
+          >
+            Caricamento...
+          </div>
+          <div style={{ fontSize: "14px", color: "#64748b" }}>
+            Verifica dell'account in corso
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   if (!currentUser) {
     navigateTo("/");
@@ -3648,7 +3647,6 @@ if (authLoading || (session && !profile)) {
   if (
     currentPath === "/Utenti" &&
     !authLoading &&
-    !sessionStorage.getItem("ilabs_path") &&
     (!session ||
       !profile ||
       (profile.role !== "user" && profile.role !== "admin"))
