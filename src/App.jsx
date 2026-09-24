@@ -3965,6 +3965,17 @@ function App() {
 
               const rowHeights = Array(10).fill(ROW_DEFAULT_HEIGHT);
 
+              console.log("measuredBookingHeights:", measuredBookingHeights);
+              room.bookings.forEach((booking) => {
+                const measuredHeight = measuredBookingHeights[booking.id];
+                console.log(
+                  "booking",
+                  booking.id,
+                  "measuredHeight:",
+                  measuredHeight,
+                );
+              });
+
               room.bookings.forEach((booking) => {
                 const measuredHeight = measuredBookingHeights[booking.id];
                 if (!measuredHeight) return;
