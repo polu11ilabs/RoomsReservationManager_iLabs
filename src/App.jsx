@@ -313,7 +313,12 @@ function App() {
   const getCurrentPath = () => {
     const path = window.location.pathname;
     if (path === "/Utenti" || path === "/Visitatori") {
+      sessionStorage.setItem("ilabs_path", path);
       return path;
+    }
+    const saved = sessionStorage.getItem("ilabs_path");
+    if (saved === "/Utenti" || saved === "/Visitatori") {
+      return saved;
     }
     return "/";
   };
@@ -322,6 +327,7 @@ function App() {
 
   const navigateTo = (path) => {
     window.history.pushState({}, "", path);
+    sessionStorage.setItem("ilabs_path", path);
     setCurrentPath(path);
   };
 
@@ -3229,9 +3235,6 @@ function App() {
   }
 
   if (currentPath === "/") {
-    /*
-     * Account pending.
-     */
     if (profile?.role === "pending") {
       return (
         <div
