@@ -3598,7 +3598,7 @@ function App() {
     );
   }
 
-  if (!currentUser) {
+  if (!authLoading && !currentUser) {
     navigateTo("/");
     return null;
   }
