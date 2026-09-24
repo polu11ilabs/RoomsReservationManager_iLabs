@@ -3588,8 +3588,14 @@ function App() {
     );
   }
 
+  if (currentPath === "/Utenti" && !currentUser) {
+    return null;
+  }
+
   if (!currentUser) {
-    navigateTo("/");
+    if (currentPath !== "/") {
+      navigateTo("/");
+    }
     return null;
   }
 
