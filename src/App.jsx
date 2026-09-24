@@ -3588,17 +3588,17 @@ function App() {
     );
   }
 
-  if (currentPath === "/Utenti" && !currentUser) {
+  if (authLoading || (session && !profile && currentPath === "/Utenti")) {
     return null;
   }
 
   if (!currentUser) {
     if (currentPath !== "/") {
       navigateTo("/");
+      return null;
     }
     return null;
   }
-
   /*
    * ============================================================
    * PROTEZIONE PAGINA /UTENTI
