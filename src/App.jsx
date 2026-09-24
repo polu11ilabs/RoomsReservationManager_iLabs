@@ -311,7 +311,11 @@ function App() {
    */
 
   const getCurrentPath = () => {
-    return window.location.pathname || "/Autenticazione";
+    const path = window.location.pathname;
+    if (path === "/Utenti" || path === "/Visitatori") {
+      return path;
+    }
+    return "/";
   };
 
   const [currentPath, setCurrentPath] = useState(getCurrentPath);
@@ -459,7 +463,7 @@ function App() {
         if (userProfile.role === "user" || userProfile.role === "admin") {
           setCurrentPath("/Utenti");
         } else if (userProfile.role === "pending") {
-          setCurrentPath("/Autenticazione");
+          setCurrentPath("/");
         }
       } catch (error) {
         console.error("Errore inizializzazione autenticazione:", error);
@@ -487,7 +491,7 @@ function App() {
         setSession(null);
         setProfile(null);
         setAuthLoading(false);
-        setCurrentPath("/Autenticazione");
+        setCurrentPath("/");
         return;
       }
 
@@ -691,7 +695,7 @@ function App() {
        * Il login viene effettuato, ma l'utente NON viene mandato
        * nella pagina /Utenti.
        *
-       * Rimane nella pagina /Autenticazione e vede il messaggio
+       * Rimane nella pagina / e vede il messaggio
        * di attesa approvazione.
        */
       if (profileData.role === "pending") {
@@ -705,9 +709,9 @@ function App() {
 
         setAuthSubmitting(false);
 
-        // Il pending deve rimanere autenticato e nella pagina Autenticazione.
-        window.history.replaceState({}, "", "/Autenticazione");
-        setCurrentPath("/Autenticazione");
+        // Il pending deve rimanere autenticato e nella pagina /.
+        window.history.replaceState({}, "", "/");
+        setCurrentPath("/");
 
         return;
       }
@@ -727,7 +731,7 @@ function App() {
 
         setAuthSubmitting(false);
 
-        navigateTo("/Autenticazione");
+        navigateTo("/");
 
         return;
       }
@@ -789,7 +793,7 @@ function App() {
 
     setAuthMode("login");
 
-    navigateTo("/Autenticazione");
+    navigateTo("/");
   };
 
   /*
@@ -3218,13 +3222,13 @@ function App() {
     session &&
     profile &&
     (profile.role === "user" || profile.role === "admin") &&
-    currentPath === "/Autenticazione"
+    currentPath === "/"
   ) {
     navigateTo("/Utenti");
     return null;
   }
 
-  if (currentPath === "/Autenticazione") {
+  if (currentPath === "/") {
     /*
      * Account pending.
      */
@@ -3612,7 +3616,7 @@ function App() {
       !profile ||
       (profile.role !== "user" && profile.role !== "admin"))
   ) {
-    navigateTo("/Autenticazione");
+    navigateTo("/");
     return null;
   }
 
@@ -3620,8 +3624,8 @@ function App() {
    * Se per qualche motivo l'URL non è uno dei tre percorsi
    * previsti, torniamo alla pagina di autenticazione.
    */
-  if (currentPath !== "/Utenti" && currentPath !== "/Autenticazione") {
-    navigateTo("/Autenticazione");
+  if (currentPath !== "/Utenti" && currentPath !== "/") {
+    navigateTo("/");
     return null;
   }
 
