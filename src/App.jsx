@@ -313,9 +313,22 @@ function App() {
   const getCurrentPath = () => {
     const path = window.location.pathname;
     if (path === "/Utenti" || path === "/Visitatori") {
+      sessionStorage.setItem("ilabs_path", path);
       return path;
     }
+    const saved = sessionStorage.getItem("ilabs_path");
+    if (saved === "/Utenti" || saved === "/Visitatori") {
+      return saved;
+    }
     return "/";
+  };
+
+  const [currentPath, setCurrentPath] = useState(getCurrentPath);
+
+  const navigateTo = (path) => {
+    window.history.pushState({}, "", path);
+    sessionStorage.setItem("ilabs_path", path);
+    setCurrentPath(path);
   };
 
   const handleBrowserNavigation = () => {
@@ -3161,7 +3174,7 @@ function App() {
    * ============================================================
    */
 
-  if (authLoading || (session && !profile)) {
+  if (authLoading) {
     return (
       <div
         style={{
@@ -3555,7 +3568,51 @@ function App() {
     );
   }
 
-  if (authLoading || (session && !profile)) {
+if (authLoading || (session && !profile)) {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#f4f6f9",
+      }}
+    >
+      <div
+        style={{
+          padding: "30px",
+          borderRadius: "16px",
+          background: "#ffffff",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+          textAlign: "center",
+        }}
+      >
+        <div style={{ fontSize: "18px", fontWeight: 700, marginBottom: "8px" }}>
+          Caricamento...
+        </div>
+        <div style={{ fontSize: "14px", color: "#64748b" }}>
+          Verifica dell'account in corso
+        </div>
+      </div>
+    </div>
+  );
+}
+
+  if (!currentUser) {
+    navigateTo("/");
+    return null;
+  }
+
+  /*
+   * ============================================================
+   * PROTEZIONE PAGINA /UTENTI
+   * ============================================================
+   *
+   * Solo gli utenti con ruolo user o admin possono vedere
+   * il calendario interno.
+   */
+  if (authLoading) {
     return (
       <div
         style={{
@@ -3587,22 +3644,6 @@ function App() {
       </div>
     );
   }
-
-if (!currentUser) {
-  if (currentPath !== "/") {
-    navigateTo("/");
-  }
-  return null;
-}
-
-  /*
-   * ============================================================
-   * PROTEZIONE PAGINA /UTENTI
-   * ============================================================
-   *
-   * Solo gli utenti con ruolo user o admin possono vedere
-   * il calendario interno.
-   */
 
   if (
     currentPath === "/Utenti" &&
