@@ -797,13 +797,12 @@ function Visitatori() {
             style={{
               marginLeft: "15px",
               padding: "8px 12px",
-              border: "1px solid #dfe3e9",
+              border: "1px solid rgba(255,255,255,0.25)",
               borderRadius: "7px",
-              background: "white",
-              color: "#172033",
+              background: "transparent",
+              color: "inherit",
               cursor: "pointer",
               fontWeight: 600,
-              fontSize: "13px",
             }}
           >
             Accedi
