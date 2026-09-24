@@ -229,17 +229,31 @@ const isCalendarClickBlocked = (
 const ROW_DEFAULT_HEIGHT = 60;
 const BOOKING_VISUAL_GAP = 4;
 
-const computeBookingBlockHeight = (booking) => {
+const computeBookingBlockHeight = (booking, rowHeights) => {
   const startMinutes = timeToMinutes(booking.start);
   const endMinutes = timeToMinutes(booking.end);
-  const totalMinutes = endMinutes - startMinutes;
-  return (totalMinutes / 60) * ROW_DEFAULT_HEIGHT - BOOKING_VISUAL_GAP * 2;
+  const startHour = Math.floor(startMinutes / 60);
+  const endHour = Math.ceil(endMinutes / 60);
+
+  let totalHeight = 0;
+  for (let h = startHour; h < endHour; h++) {
+    const rowIndex = h - 8;
+    const rh = (rowHeights && rowHeights[rowIndex]) || ROW_DEFAULT_HEIGHT;
+    const overlapStart = Math.max(startMinutes, h * 60);
+    const overlapEnd = Math.min(endMinutes, (h + 1) * 60);
+    const fraction = (overlapEnd - overlapStart) / 60;
+    totalHeight += fraction * rh;
+  }
+  return totalHeight - BOOKING_VISUAL_GAP * 2;
 };
 
-const computeBookingBlockOffset = (booking) => {
+const computeBookingBlockOffset = (booking, rowHeights) => {
   const startMinutes = timeToMinutes(booking.start);
+  const startHour = Math.floor(startMinutes / 60);
   const minutesIntoHour = startMinutes % 60;
-  return (minutesIntoHour / 60) * ROW_DEFAULT_HEIGHT;
+  const rowIndex = startHour - 8;
+  const rh = (rowHeights && rowHeights[rowIndex]) || ROW_DEFAULT_HEIGHT;
+  return (minutesIntoHour / 60) * rh;
 };
 
 const dayNames = ["LUN", "MAR", "MER", "GIO", "VEN"];
@@ -4159,7 +4173,7 @@ function App() {
                         <div
                           className="calendar-row"
                           key={hour}
-                          style={{ height: `${ROW_DEFAULT_HEIGHT}px` }}
+                          style={{ height: `${rowHeight}px` }}
                         >
                           <div className="time-cell">
                             {String(hour).padStart(2, "0")}:00
@@ -4738,16 +4752,14 @@ function App() {
 
                                             position: "absolute",
 
-                                            top: `${computeBookingBlockOffset(booking) + BOOKING_VISUAL_GAP}px`,
-
+                                            top: `${computeBookingBlockOffset(booking, rowHeights) + BOOKING_VISUAL_GAP}px`,
                                             left: `calc(${left} + ${BOOKING_VISUAL_GAP}px)`,
 
                                             width: `calc(${width} - ${BOOKING_VISUAL_GAP * 2}px)`,
 
                                             right: "auto",
 
-                                            height: `max(0px, ${computeBookingBlockHeight(booking)}px)`,
-
+                                            height: `max(0px, ${computeBookingBlockHeight(booking, rowHeights)}px)`,
                                             boxSizing: "border-box",
                                             overflow: "hidden",
 
