@@ -3222,6 +3222,10 @@ function App() {
     );
   }
 
+  if (currentPath === "/Visitatori") {
+    return <Visitatori />;
+  }
+
   /*
    * ============================================================
    * PAGINA AUTENTICAZIONE
@@ -3551,7 +3555,7 @@ function App() {
 
               <button
                 type="button"
-                onClick={() => (window.location.href = "/Visitatori")}
+                onClick={() => navigateTo("/Visitatori")}
                 style={{
                   width: "100%",
                   marginTop: "12px",
@@ -3667,9 +3671,6 @@ function App() {
    * Se per qualche motivo l'URL non è uno dei tre percorsi
    * previsti, torniamo alla pagina di autenticazione.
    */
-  if (currentPath === "/Visitatori") {
-    return <Visitatori />;
-  }
 
   if (currentPath !== "/Utenti" && currentPath !== "/") {
     navigateTo("/");
