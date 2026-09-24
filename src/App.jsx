@@ -837,8 +837,6 @@ function App() {
         }
       : null;
 
-  const isAdmin = currentUser?.role === "admin";
-
   console.log(
     "RENDER STATE:",
     JSON.stringify({
@@ -849,6 +847,9 @@ function App() {
       currentPath,
     }),
   );
+
+  const isAdmin = currentUser?.role === "admin";
+
   /*
    * ============================================================
    * SALE
