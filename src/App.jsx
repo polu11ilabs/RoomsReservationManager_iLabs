@@ -839,6 +839,14 @@ function App() {
 
   const isAdmin = currentUser?.role === "admin";
 
+  console.log("RENDER STATE:", {
+    authLoading,
+    session: !!session,
+    profile: profile?.role,
+    currentUser: !!currentUser,
+    currentPath,
+  });
+
   /*
    * ============================================================
    * SALE
