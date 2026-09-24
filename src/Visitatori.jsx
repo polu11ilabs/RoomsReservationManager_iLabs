@@ -791,7 +791,7 @@ function Visitatori() {
           <button
             type="button"
             onClick={() => {
-              window.history.pushState({}, "", "/Autenticazione");
+              window.history.pushState({}, "", "/");
               window.dispatchEvent(new PopStateEvent("popstate"));
             }}
             style={{
