@@ -3563,7 +3563,12 @@ function App() {
     );
   }
 
+  if (authLoading) {
+    return null;
+  }
+
   if (!currentUser) {
+    navigateTo("/");
     return null;
   }
 
