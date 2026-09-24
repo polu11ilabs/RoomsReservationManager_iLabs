@@ -4,6 +4,7 @@ import { supabase } from "./supabaseClient";
 import { it } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
 import "./index.css";
+import Visitatori from "./Visitatori.jsx";
 
 const getMonday = (date) => {
   const result = new Date(date);
@@ -312,12 +313,8 @@ function App() {
 
   const getCurrentPath = () => {
     const path = window.location.pathname;
-    if (path === "/Utenti" || path === "/Visitatori") {
+    if (path === "/Utenti" || path === "/Visitatori" || path === "/") {
       return path;
-    }
-    const saved = sessionStorage.getItem("ilabs_path");
-    if (saved === "/Utenti" || saved === "/Visitatori") {
-      return saved;
     }
     return "/";
   };
@@ -3670,6 +3667,10 @@ function App() {
    * Se per qualche motivo l'URL non è uno dei tre percorsi
    * previsti, torniamo alla pagina di autenticazione.
    */
+  if (currentPath === "/Visitatori") {
+    return <Visitatori />;
+  }
+
   if (currentPath !== "/Utenti" && currentPath !== "/") {
     navigateTo("/");
     return null;
