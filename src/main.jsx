@@ -1,17 +1,17 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import App from "./App.jsx";
-import Visitatori from "./Visitatori.jsx";
-import "./index.css";
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import App from './App.jsx'
+import './index.css'
 
-createRoot(document.getElementById("root")).render(
-  <StrictMode>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<App />} />
-        <Route path="/visitatori" element={<Visitatori />} />
-      </Routes>
-    </BrowserRouter>
-  </StrictMode>
-);
+const root = document.getElementById('root')
+
+try {
+  createRoot(root).render(
+    <StrictMode>
+      <App />
+    </StrictMode>
+  )
+} catch (e) {
+  console.error('CRASH AL MOUNT:', e)
+  document.body.innerHTML = '<pre style="color:red">' + e.message + '\n' + e.stack + '</pre>'
+}
