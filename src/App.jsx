@@ -378,18 +378,6 @@ function App() {
     return () => window.removeEventListener("showlogin", handler);
   }, []);
 
-  useEffect(() => {
-    const handleUnload = () => {
-      supabase.auth.signOut();
-    };
-
-    window.addEventListener("beforeunload", handleUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleUnload);
-    };
-  }, []);
-
   /*
    * Recupero il profilo dell'utente autenticato.
    */
