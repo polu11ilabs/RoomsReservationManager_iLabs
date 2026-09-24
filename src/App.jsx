@@ -479,8 +479,10 @@ function App() {
         setProfile(userProfile);
 
         if (userProfile.role === "user" || userProfile.role === "admin") {
+          window.history.replaceState({}, "", "/Utenti");
           setCurrentPath("/Utenti");
         } else if (userProfile.role === "pending") {
+          window.history.replaceState({}, "", "/");
           setCurrentPath("/");
         }
       } catch (error) {
