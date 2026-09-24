@@ -226,7 +226,7 @@ const isCalendarClickBlocked = (
     return clickedDateTime >= start && clickedDateTime < end;
   });
 };
-
+const ROW_DEFAULT_HEIGHT = 60;
 const BOOKING_VISUAL_GAP = 4;
 
 const computeBookingBlockHeight = (booking) => {
