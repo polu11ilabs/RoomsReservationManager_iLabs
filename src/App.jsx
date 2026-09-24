@@ -1793,28 +1793,16 @@ function App() {
 
     Object.entries(bookingBlockRefs.current).forEach(([bookingId, node]) => {
       if (!node) return;
-
-      const previousMinHeight = node.style.minHeight;
-
-      node.style.minHeight = "auto";
-
       nextHeights[bookingId] = Math.ceil(node.getBoundingClientRect().height);
-
-      node.style.minHeight = previousMinHeight;
     });
 
     setMeasuredBookingHeights((current) => {
       const currentKeys = Object.keys(current);
       const nextKeys = Object.keys(nextHeights);
-
       const sameKeys =
         currentKeys.length === nextKeys.length &&
         currentKeys.every((key) => nextHeights[key] === current[key]);
-
-      if (sameKeys) {
-        return current;
-      }
-
+      if (sameKeys) return current;
       return nextHeights;
     });
   }, [rooms]);
@@ -4724,11 +4712,6 @@ function App() {
                                       return (
                                         <div
                                           key={booking.id}
-                                          ref={(node) => {
-                                            bookingBlockRefs.current[
-                                              booking.id
-                                            ] = node;
-                                          }}
                                           className={`booking-block ${
                                             booking.ownerId === currentUser?.id
                                               ? "booking-block-owned"
@@ -4806,54 +4789,62 @@ function App() {
                                             event.stopPropagation()
                                           }
                                         >
-                                          <div className="booking-top-row">
-                                            <strong>{booking.name}</strong>
+                                          <div
+                                            ref={(node) => {
+                                              bookingBlockRefs.current[
+                                                booking.id
+                                              ] = node;
+                                            }}
+                                          >
+                                            <div className="booking-top-row">
+                                              <strong>{booking.name}</strong>
 
-                                            {(isAdmin ||
-                                              (!isBookingExpired(booking) &&
-                                                booking.ownerId ===
-                                                  currentUser.id)) && (
-                                              <div className="booking-owner-actions">
-                                                <button
-                                                  type="button"
-                                                  className="calendar-edit-button"
-                                                  onClick={(event) => {
-                                                    event.stopPropagation();
-                                                    openEditReason(
-                                                      room.id,
-                                                      booking,
-                                                    );
-                                                  }}
-                                                >
-                                                  Modifica
-                                                </button>
+                                              {(isAdmin ||
+                                                (!isBookingExpired(booking) &&
+                                                  booking.ownerId ===
+                                                    currentUser.id)) && (
+                                                <div className="booking-owner-actions">
+                                                  <button
+                                                    type="button"
+                                                    className="calendar-edit-button"
+                                                    onClick={(event) => {
+                                                      event.stopPropagation();
+                                                      openEditReason(
+                                                        room.id,
+                                                        booking,
+                                                      );
+                                                    }}
+                                                  >
+                                                    Modifica
+                                                  </button>
 
-                                                <button
-                                                  type="button"
-                                                  className="calendar-delete-button"
-                                                  onClick={(event) => {
-                                                    event.stopPropagation();
-                                                    handleDeleteBooking(
-                                                      room.id,
-                                                      booking.id,
-                                                    );
-                                                  }}
-                                                >
-                                                  ×
-                                                </button>
-                                              </div>
+                                                  <button
+                                                    type="button"
+                                                    className="calendar-delete-button"
+                                                    onClick={(event) => {
+                                                      event.stopPropagation();
+                                                      handleDeleteBooking(
+                                                        room.id,
+                                                        booking.id,
+                                                      );
+                                                    }}
+                                                  >
+                                                    ×
+                                                  </button>
+                                                </div>
+                                              )}
+                                            </div>
+
+                                            <span className="booking-time">
+                                              {booking.start} – {booking.end}
+                                            </span>
+
+                                            {booking.reason && (
+                                              <span className="booking-reason">
+                                                {booking.reason}
+                                              </span>
                                             )}
                                           </div>
-
-                                          <span className="booking-time">
-                                            {booking.start} – {booking.end}
-                                          </span>
-
-                                          {booking.reason && (
-                                            <span className="booking-reason">
-                                              {booking.reason}
-                                            </span>
-                                          )}
                                         </div>
                                       );
                                     }),
