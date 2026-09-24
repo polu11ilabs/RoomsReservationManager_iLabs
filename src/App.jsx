@@ -3182,21 +3182,11 @@ function App() {
           }}
         >
           <div
-            style={{
-              fontSize: "18px",
-              fontWeight: 700,
-              marginBottom: "8px",
-            }}
+            style={{ fontSize: "18px", fontWeight: 700, marginBottom: "8px" }}
           >
             Caricamento...
           </div>
-
-          <div
-            style={{
-              fontSize: "14px",
-              color: "#64748b",
-            }}
-          >
+          <div style={{ fontSize: "14px", color: "#64748b" }}>
             Verifica dell'account in corso
           </div>
         </div>
@@ -3204,21 +3194,7 @@ function App() {
     );
   }
 
-  /*
-   * ============================================================
-   * PAGINA AUTENTICAZIONE
-   * ============================================================
-   *
-   * Se l'utente non è autenticato oppure è pending,
-   * rimane nella pagina di autenticazione.
-   */
-  if (
-    !authLoading &&
-    session &&
-    profile &&
-    (profile.role === "user" || profile.role === "admin") &&
-    currentPath === "/"
-  ) {
+  if (currentPath === "/" && currentUser) {
     navigateTo("/Utenti");
     return null;
   }
@@ -3256,7 +3232,6 @@ function App() {
             >
               Account in attesa
             </div>
-
             <div
               style={{
                 fontSize: "16px",
@@ -3268,7 +3243,6 @@ function App() {
               Il tuo account è stato registrato correttamente, ma deve ancora
               essere approvato da un amministratore.
             </div>
-
             <button
               type="button"
               onClick={handleLogout}
@@ -3289,12 +3263,6 @@ function App() {
       );
     }
 
-    /*
-     * ============================================================
-     * LOGIN / REGISTRAZIONE
-     * ============================================================
-     */
-
     return (
       <div className="app">
         <div
@@ -3307,18 +3275,8 @@ function App() {
             boxSizing: "border-box",
           }}
         >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: "500px",
-            }}
-          >
-            <div
-              style={{
-                textAlign: "center",
-                marginBottom: "30px",
-              }}
-            >
+          <div style={{ width: "100%", maxWidth: "500px" }}>
+            <div style={{ textAlign: "center", marginBottom: "30px" }}>
               <div
                 style={{
                   fontSize: "34px",
@@ -3329,17 +3287,10 @@ function App() {
               >
                 I-LABS
               </div>
-
-              <div
-                style={{
-                  fontSize: "22px",
-                  fontWeight: 800,
-                }}
-              >
+              <div style={{ fontSize: "22px", fontWeight: 800 }}>
                 Prenotazione Sale
               </div>
             </div>
-
             <div
               style={{
                 background: "#ffffff",
@@ -3349,11 +3300,7 @@ function App() {
               }}
             >
               <div
-                style={{
-                  display: "flex",
-                  gap: "8px",
-                  marginBottom: "25px",
-                }}
+                style={{ display: "flex", gap: "8px", marginBottom: "25px" }}
               >
                 <button
                   type="button"
@@ -3375,7 +3322,6 @@ function App() {
                 >
                   Accedi
                 </button>
-
                 <button
                   type="button"
                   onClick={() => {
@@ -3397,7 +3343,6 @@ function App() {
                   Registrati
                 </button>
               </div>
-
               {authError && (
                 <div
                   style={{
@@ -3412,7 +3357,6 @@ function App() {
                   {authError}
                 </div>
               )}
-
               {authMessage && (
                 <div
                   style={{
@@ -3427,7 +3371,6 @@ function App() {
                   {authMessage}
                 </div>
               )}
-
               {authMode === "register" && (
                 <>
                   <input
@@ -3444,7 +3387,6 @@ function App() {
                       borderRadius: "10px",
                     }}
                   />
-
                   <input
                     type="text"
                     value={authLastName}
@@ -3461,7 +3403,6 @@ function App() {
                   />
                 </>
               )}
-
               <input
                 type="email"
                 value={authEmail}
@@ -3476,7 +3417,6 @@ function App() {
                   borderRadius: "10px",
                 }}
               />
-
               <input
                 type="password"
                 value={authPassword}
@@ -3491,7 +3431,6 @@ function App() {
                   borderRadius: "10px",
                 }}
               />
-
               {authMode === "register" && (
                 <input
                   type="password"
@@ -3508,7 +3447,6 @@ function App() {
                   }}
                 />
               )}
-
               <button
                 type="button"
                 disabled={authSubmitting}
@@ -3530,7 +3468,6 @@ function App() {
                     ? "Accedi"
                     : "Registrati"}
               </button>
-
               <button
                 type="button"
                 onClick={() => (window.location.href = "/Visitatori")}
@@ -3555,67 +3492,7 @@ function App() {
     );
   }
 
-  if (authLoading || (session && !profile)) {
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#f4f6f9",
-        }}
-      >
-        <div
-          style={{
-            padding: "30px",
-            borderRadius: "16px",
-            background: "#ffffff",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-            textAlign: "center",
-          }}
-        >
-          <div
-            style={{ fontSize: "18px", fontWeight: 700, marginBottom: "8px" }}
-          >
-            Caricamento...
-          </div>
-          <div style={{ fontSize: "14px", color: "#64748b" }}>
-            Verifica dell'account in corso
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (authLoading || (session && !profile && currentPath === "/Utenti")) {
-    return null;
-  }
-
   if (!currentUser) {
-    if (currentPath !== "/") {
-      navigateTo("/");
-      return null;
-    }
-    return null;
-  }
-  /*
-   * ============================================================
-   * PROTEZIONE PAGINA /UTENTI
-   * ============================================================
-   *
-   * Solo gli utenti con ruolo user o admin possono vedere
-   * il calendario interno.
-   */
-
-  if (
-    currentPath === "/Utenti" &&
-    !authLoading &&
-    !sessionStorage.getItem("ilabs_path") &&
-    (!session ||
-      !profile ||
-      (profile.role !== "user" && profile.role !== "admin"))
-  ) {
     navigateTo("/");
     return null;
   }
