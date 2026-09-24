@@ -311,7 +311,7 @@ function App() {
    */
 
   const getCurrentPath = () => {
-    return "/Autenticazione";
+    return window.location.pathname || "/Autenticazione";
   };
 
   const [currentPath, setCurrentPath] = useState(getCurrentPath);
