@@ -227,6 +227,8 @@ const isCalendarClickBlocked = (
   });
 };
 
+const ROW_DEFAULT_HEIGHT = 60;
+const BOOKING_VISUAL_GAP = 4;
 const BOOKING_MIN_HEIGHT = 56;
 
 const getRowHeight = (rowHeights, hour) => {
