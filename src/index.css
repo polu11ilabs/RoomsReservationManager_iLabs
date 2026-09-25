@@ -400,7 +400,7 @@ button {
   position: relative;
   overflow: visible;
   border-right: 1px solid #edf0f4;
-  height: 100%;
+  min-height: 100%;
 }
 
 .calendar-cell:last-child {
@@ -489,9 +489,9 @@ button {
   box-shadow: 0 4px 12px rgba(23, 32, 51, 0.15);
 
   overflow: visible;
+  height: auto;
 
   transition:
-    height 0.15s ease,
     opacity 0.15s ease,
     transform 0.1s ease;
 
