@@ -228,40 +228,8 @@ const isCalendarClickBlocked = (
 };
 
 const ROW_DEFAULT_HEIGHT = 60;
-const BOOKING_VISUAL_GAP = 4;
-const BOOKING_MIN_HEIGHT = 56;
-
-const getRowHeight = (rowHeights, hour) => {
-  const index = hour - 8;
-  if (!rowHeights || index < 0 || index >= rowHeights.length)
-    return ROW_DEFAULT_HEIGHT;
-  return rowHeights[index];
-};
-
-const computeBookingBlockOffset = (booking, rowHeights) => {
-  const startMinutes = timeToMinutes(booking.start);
-  const startHour = Math.floor(startMinutes / 60);
-  const minutesIntoHour = startMinutes % 60;
-  const rh = getRowHeight(rowHeights, startHour);
-  return (minutesIntoHour / 60) * rh;
-};
-
-const computeBookingBlockHeight = (booking, rowHeights) => {
-  const startMinutes = timeToMinutes(booking.start);
-  const endMinutes = timeToMinutes(booking.end);
-  const startHour = Math.floor(startMinutes / 60);
-  const endHour = Math.ceil(endMinutes / 60);
-
-  let totalHeight = 0;
-  for (let h = startHour; h < endHour; h++) {
-    const rh = getRowHeight(rowHeights, h);
-    const overlapStart = Math.max(startMinutes, h * 60);
-    const overlapEnd = Math.min(endMinutes, (h + 1) * 60);
-    const fraction = (overlapEnd - overlapStart) / 60;
-    totalHeight += fraction * rh;
-  }
-  return Math.max(BOOKING_MIN_HEIGHT, totalHeight) - BOOKING_VISUAL_GAP * 2;
-};
+const BOOKING_VISUAL_GAP = 6; // spazio fisso sopra e sotto ogni blocco
+const PX_PER_MINUTE = 1; // 1px per ogni minuto vuoto prima/dopo la prenotazione
 
 const dayNames = ["LUN", "MAR", "MER", "GIO", "VEN"];
 
@@ -335,6 +303,9 @@ function App() {
   const [editRoomDescription, setEditRoomDescription] = useState("");
   const [editRoomColor, setEditRoomColor] = useState("#2563eb");
   const [savingRoom, setSavingRoom] = useState(false);
+
+  const bookingBlockRefs = useRef({});
+  const [measuredBookingHeights, setMeasuredBookingHeights] = useState({});
 
   const [, forceMinuteTick] = useState(0);
 
@@ -1499,6 +1470,22 @@ function App() {
    */
 
   const editTextareaRef = useRef(null);
+
+  useLayoutEffect(() => {
+    const nextHeights = {};
+    Object.entries(bookingBlockRefs.current).forEach(([bookingId, node]) => {
+      if (!node) return;
+      nextHeights[bookingId] = Math.ceil(node.getBoundingClientRect().height);
+    });
+    setMeasuredBookingHeights((current) => {
+      const allKeys = new Set([
+        ...Object.keys(current),
+        ...Object.keys(nextHeights),
+      ]);
+      const changed = [...allKeys].some((k) => current[k] !== nextHeights[k]);
+      return changed ? nextHeights : current;
+    });
+  }, [rooms]);
 
   /*
    * ============================================================
@@ -3943,33 +3930,6 @@ function App() {
                 year: "numeric",
               })}`;
 
-              const rowHeights = Array(10).fill(ROW_DEFAULT_HEIGHT);
-
-              room.bookings.forEach((booking) => {
-                const startMinutes = timeToMinutes(booking.start);
-                const endMinutes = timeToMinutes(booking.end);
-                const startHour = Math.floor(startMinutes / 60);
-                const rowIndex = startHour - 8;
-                if (rowIndex < 0 || rowIndex >= 10) return;
-
-                const minutesIntoHour = startMinutes % 60;
-                const offsetInRow = (minutesIntoHour / 60) * ROW_DEFAULT_HEIGHT;
-
-                const minutesInStartRow =
-                  Math.min(endMinutes, (startHour + 1) * 60) - startMinutes;
-                const fractionInStartRow = minutesInStartRow / 60;
-
-                const neededInStartRow =
-                  offsetInRow +
-                  BOOKING_MIN_HEIGHT * fractionInStartRow +
-                  BOOKING_VISUAL_GAP * 2;
-
-                rowHeights[rowIndex] = Math.max(
-                  rowHeights[rowIndex],
-                  Math.ceil(neededInStartRow),
-                );
-              });
-
               return (
                 <div className="calendar-room" key={room.id}>
                   <div className="calendar-room-header">
@@ -4112,13 +4072,11 @@ function App() {
                     {Array.from({ length: 10 }, (_, index) => {
                       const hour = index + 8;
 
-                      const rowHeight = rowHeights[index];
-
                       return (
                         <div
                           className="calendar-row"
                           key={hour}
-                          style={{ minHeight: `${rowHeight}px` }}
+                          style={{ minHeight: `${ROW_DEFAULT_HEIGHT}px` }}
                         >
                           <div className="time-cell">
                             {String(hour).padStart(2, "0")}:00
@@ -4617,60 +4575,56 @@ function App() {
                                 )}
 
                                 {(() => {
-                                  const columns = [];
-                                  const sortedBookings = [
-                                    ...bookingsInCell,
-                                  ].sort(
-                                    (a, b) =>
-                                      timeToMinutes(a.start) -
-                                      timeToMinutes(b.start),
-                                  );
-                                  sortedBookings.forEach((booking) => {
-                                    const bookingStart = timeToMinutes(
+                                  // Tutte le prenotazioni che iniziano in questa cella, ordinate per orario
+                                  const cellBookings = bookingsInCell
+                                    .slice()
+                                    .sort(
+                                      (a, b) =>
+                                        timeToMinutes(a.start) -
+                                        timeToMinutes(b.start),
+                                    );
+
+                                  if (cellBookings.length === 0) return null;
+
+                                  return cellBookings.map((booking, index) => {
+                                    const startMinutes = timeToMinutes(
                                       booking.start,
                                     );
-                                    const bookingEnd = timeToMinutes(
+                                    const endMinutes = timeToMinutes(
                                       booking.end,
                                     );
-                                    let placed = false;
-                                    for (
-                                      let col = 0;
-                                      col < columns.length;
-                                      col++
-                                    ) {
-                                      const hasOverlap = columns[col].some(
-                                        (existing) => {
-                                          const existingStart = timeToMinutes(
-                                            existing.start,
-                                          );
-                                          const existingEnd = timeToMinutes(
-                                            existing.end,
-                                          );
-                                          return (
-                                            bookingStart < existingEnd &&
-                                            bookingEnd > existingStart
-                                          );
-                                        },
-                                      );
-                                      if (!hasOverlap) {
-                                        columns[col].push(booking);
-                                        placed = true;
-                                        break;
-                                      }
-                                    }
-                                    if (!placed) columns.push([booking]);
-                                  });
+                                    const hourStart = hour * 60;
 
-                                  const totalCols = columns.length;
+                                    // Minuti vuoti prima di questa prenotazione rispetto
+                                    // alla fine della prenotazione precedente (o all'inizio della cella)
+                                    const prevEndMinutes =
+                                      index === 0
+                                        ? hourStart
+                                        : timeToMinutes(
+                                            cellBookings[index - 1].end,
+                                          );
 
-                                  return columns.flatMap((col, colIndex) =>
-                                    col.map((booking) => {
-                                      const width = `calc((100% - 8px) / ${totalCols})`;
-                                      const left = `calc(4px + (100% - 8px) / ${totalCols} * ${colIndex})`;
+                                    const minutesBefore =
+                                      startMinutes - prevEndMinutes;
+                                    const spacerHeight =
+                                      minutesBefore * PX_PER_MINUTE;
 
-                                      return (
+                                    return (
+                                      <div
+                                        key={booking.id}
+                                        style={{ position: "relative" }}
+                                      >
+                                        {/* Spacer invisibile per il tempo vuoto prima del blocco */}
+                                        {spacerHeight > 0 && (
+                                          <div
+                                            style={{
+                                              height: `${spacerHeight}px`,
+                                              flexShrink: 0,
+                                            }}
+                                          />
+                                        )}
+
                                         <div
-                                          key={booking.id}
                                           className={`booking-block ${
                                             booking.ownerId === currentUser?.id
                                               ? "booking-block-owned"
@@ -4694,21 +4648,11 @@ function App() {
                                               : isBookingActive(booking)
                                                 ? "#16a34a"
                                                 : "#2563eb",
-
-                                            position: "absolute",
-
-                                            top: `${computeBookingBlockOffset(booking, rowHeights) + BOOKING_VISUAL_GAP}px`,
-                                            left: `calc(${left} + ${BOOKING_VISUAL_GAP}px)`,
-
-                                            width: `calc(${width} - ${BOOKING_VISUAL_GAP * 2}px)`,
-
-                                            right: "auto",
-
-                                            height: `${computeBookingBlockHeight(booking, rowHeights)}px`,
+                                            position: "relative",
+                                            margin: `${BOOKING_VISUAL_GAP}px ${BOOKING_VISUAL_GAP}px`,
                                             boxSizing: "border-box",
-                                            overflow: "hidden",
-
                                             borderRadius: "8px",
+                                            overflow: "visible",
                                           }}
                                           draggable={
                                             !isBookingExpired(booking) &&
@@ -4746,7 +4690,13 @@ function App() {
                                             event.stopPropagation()
                                           }
                                         >
-                                          <div>
+                                          <div
+                                            ref={(node) => {
+                                              bookingBlockRefs.current[
+                                                booking.id
+                                              ] = node;
+                                            }}
+                                          >
                                             <div className="booking-top-row">
                                               <strong>{booking.name}</strong>
 
@@ -4797,9 +4747,21 @@ function App() {
                                             )}
                                           </div>
                                         </div>
-                                      );
-                                    }),
-                                  );
+
+                                        {/* Spazio minimo di 15px dopo l'ultimo blocco della cella
+                                         solo se la prenotazione non finisce esattamente a :00 */}
+                                        {index === cellBookings.length - 1 &&
+                                          endMinutes % 60 !== 0 && (
+                                            <div
+                                              style={{
+                                                height: "15px",
+                                                flexShrink: 0,
+                                              }}
+                                            />
+                                          )}
+                                      </div>
+                                    );
+                                  });
                                 })()}
                               </div>
                             );
