@@ -226,27 +226,39 @@ const isCalendarClickBlocked = (
     return clickedDateTime >= start && clickedDateTime < end;
   });
 };
-const ROW_DEFAULT_HEIGHT = 60;
-const BOOKING_VISUAL_GAP = 4;
 
-const computeBookingBlockHeight = (booking) => {
-  const startMinutes = timeToMinutes(booking.start);
-  const endMinutes = timeToMinutes(booking.end);
-  const totalMinutes = endMinutes - startMinutes;
-  // Altezza fissa proporzionale ai minuti, NON alla riga
-  return (
-    Math.max(20, (totalMinutes / 60) * ROW_DEFAULT_HEIGHT) -
-    BOOKING_VISUAL_GAP * 2
-  );
+const BOOKING_MIN_HEIGHT = 56;
+
+const getRowHeight = (rowHeights, hour) => {
+  const index = hour - 8;
+  if (!rowHeights || index < 0 || index >= rowHeights.length)
+    return ROW_DEFAULT_HEIGHT;
+  return rowHeights[index];
 };
 
 const computeBookingBlockOffset = (booking, rowHeights) => {
   const startMinutes = timeToMinutes(booking.start);
   const startHour = Math.floor(startMinutes / 60);
   const minutesIntoHour = startMinutes % 60;
-  const rowIndex = startHour - 8;
-  const rh = (rowHeights && rowHeights[rowIndex]) || ROW_DEFAULT_HEIGHT;
+  const rh = getRowHeight(rowHeights, startHour);
   return (minutesIntoHour / 60) * rh;
+};
+
+const computeBookingBlockHeight = (booking, rowHeights) => {
+  const startMinutes = timeToMinutes(booking.start);
+  const endMinutes = timeToMinutes(booking.end);
+  const startHour = Math.floor(startMinutes / 60);
+  const endHour = Math.ceil(endMinutes / 60);
+
+  let totalHeight = 0;
+  for (let h = startHour; h < endHour; h++) {
+    const rh = getRowHeight(rowHeights, h);
+    const overlapStart = Math.max(startMinutes, h * 60);
+    const overlapEnd = Math.min(endMinutes, (h + 1) * 60);
+    const fraction = (overlapEnd - overlapStart) / 60;
+    totalHeight += fraction * rh;
+  }
+  return Math.max(BOOKING_MIN_HEIGHT, totalHeight) - BOOKING_VISUAL_GAP * 2;
 };
 
 const dayNames = ["LUN", "MAR", "MER", "GIO", "VEN"];
@@ -1484,11 +1496,7 @@ function App() {
    * ============================================================
    */
 
-  const bookingBlockRefs = useRef({});
-
   const editTextareaRef = useRef(null);
-
-  const [measuredBookingHeights, setMeasuredBookingHeights] = useState({});
 
   /*
    * ============================================================
@@ -1788,31 +1796,6 @@ function App() {
       autoResizeTextarea(editTextareaRef.current);
     }
   }, [editingBooking]);
-
-  /*
-   * ============================================================
-   * MISURAZIONE PRENOTAZIONI
-   * ============================================================
-   */
-
-  useLayoutEffect(() => {
-    const nextHeights = {};
-
-    Object.entries(bookingBlockRefs.current).forEach(([bookingId, node]) => {
-      if (!node) return;
-      nextHeights[bookingId] = Math.ceil(node.getBoundingClientRect().height);
-    });
-
-    setMeasuredBookingHeights((current) => {
-      const currentKeys = Object.keys(current);
-      const nextKeys = Object.keys(nextHeights);
-      const sameKeys =
-        currentKeys.length === nextKeys.length &&
-        currentKeys.every((key) => nextHeights[key] === current[key]);
-      if (sameKeys) return current;
-      return nextHeights;
-    });
-  }, [rooms]);
 
   /*
    * ============================================================
@@ -3962,24 +3945,26 @@ function App() {
 
               room.bookings.forEach((booking) => {
                 const startMinutes = timeToMinutes(booking.start);
+                const endMinutes = timeToMinutes(booking.end);
                 const startHour = Math.floor(startMinutes / 60);
                 const rowIndex = startHour - 8;
                 if (rowIndex < 0 || rowIndex >= 10) return;
 
-                // Offset del blocco dentro la cella (quanti px dall'inizio della riga)
                 const minutesIntoHour = startMinutes % 60;
                 const offsetInRow = (minutesIntoHour / 60) * ROW_DEFAULT_HEIGHT;
 
-                // Altezza fissa del blocco prenotazione
-                const blockHeight =
-                  computeBookingBlockHeight(booking) + BOOKING_VISUAL_GAP * 2;
+                const minutesInStartRow =
+                  Math.min(endMinutes, (startHour + 1) * 60) - startMinutes;
+                const fractionInStartRow = minutesInStartRow / 60;
 
-                // Spazio necessario nella riga = offset + altezza blocco + gap
-                const needed = offsetInRow + blockHeight + BOOKING_VISUAL_GAP;
+                const neededInStartRow =
+                  offsetInRow +
+                  BOOKING_MIN_HEIGHT * fractionInStartRow +
+                  BOOKING_VISUAL_GAP * 2;
 
                 rowHeights[rowIndex] = Math.max(
                   rowHeights[rowIndex],
-                  Math.ceil(needed),
+                  Math.ceil(neededInStartRow),
                 );
               });
 
@@ -4131,7 +4116,7 @@ function App() {
                         <div
                           className="calendar-row"
                           key={hour}
-                          style={{ height: `${rowHeight}px` }}
+                          style={{ minHeight: `${rowHeight}px` }}
                         >
                           <div className="time-cell">
                             {String(hour).padStart(2, "0")}:00
@@ -4717,7 +4702,7 @@ function App() {
 
                                             right: "auto",
 
-                                            height: `max(0px, ${computeBookingBlockHeight(booking, rowHeights)}px)`,
+                                            height: `${computeBookingBlockHeight(booking, rowHeights)}px`,
                                             boxSizing: "border-box",
                                             overflow: "hidden",
 
@@ -4759,13 +4744,7 @@ function App() {
                                             event.stopPropagation()
                                           }
                                         >
-                                          <div
-                                            ref={(node) => {
-                                              bookingBlockRefs.current[
-                                                booking.id
-                                              ] = node;
-                                            }}
-                                          >
+                                          <div>
                                             <div className="booking-top-row">
                                               <strong>{booking.name}</strong>
 
