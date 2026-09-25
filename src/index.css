@@ -389,7 +389,7 @@ button {
 .calendar-row {
   min-height: 60px;
   border-bottom: 1px solid #edf0f4;
-  transition: height 0.15s ease;
+  transition: min-height 0.15s ease;
 }
 
 .calendar-row:last-child {
