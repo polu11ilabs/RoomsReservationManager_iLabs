@@ -4546,7 +4546,7 @@ function App() {
                                   <div
                                     className="calendar-cell-fill"
                                     style={{
-                                      height: `${fillFraction * 100}%`,
+                                      height: `${Math.floor(fillFraction * 60) * PX_PER_MINUTE}px`,
                                       minHeight: 0,
                                       display: "block",
                                     }}
