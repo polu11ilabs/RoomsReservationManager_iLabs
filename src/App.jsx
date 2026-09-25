@@ -229,22 +229,15 @@ const isCalendarClickBlocked = (
 const ROW_DEFAULT_HEIGHT = 60;
 const BOOKING_VISUAL_GAP = 4;
 
-const computeBookingBlockHeight = (booking, rowHeights) => {
+const computeBookingBlockHeight = (booking) => {
   const startMinutes = timeToMinutes(booking.start);
   const endMinutes = timeToMinutes(booking.end);
-  const startHour = Math.floor(startMinutes / 60);
-  const endHour = Math.ceil(endMinutes / 60);
-
-  let totalHeight = 0;
-  for (let h = startHour; h < endHour; h++) {
-    const rowIndex = h - 8;
-    const rh = (rowHeights && rowHeights[rowIndex]) || ROW_DEFAULT_HEIGHT;
-    const overlapStart = Math.max(startMinutes, h * 60);
-    const overlapEnd = Math.min(endMinutes, (h + 1) * 60);
-    const fraction = (overlapEnd - overlapStart) / 60;
-    totalHeight += fraction * rh;
-  }
-  return totalHeight - BOOKING_VISUAL_GAP * 2;
+  const totalMinutes = endMinutes - startMinutes;
+  // Altezza fissa proporzionale ai minuti, NON alla riga
+  return (
+    Math.max(20, (totalMinutes / 60) * ROW_DEFAULT_HEIGHT) -
+    BOOKING_VISUAL_GAP * 2
+  );
 };
 
 const computeBookingBlockOffset = (booking, rowHeights) => {
@@ -3967,61 +3960,26 @@ function App() {
 
               const rowHeights = Array(10).fill(ROW_DEFAULT_HEIGHT);
 
-              console.log("measuredBookingHeights:", measuredBookingHeights);
               room.bookings.forEach((booking) => {
-                const measuredHeight = measuredBookingHeights[booking.id];
-                console.log(
-                  "booking",
-                  booking.id,
-                  "measuredHeight:",
-                  measuredHeight,
-                );
-              });
-
-              room.bookings.forEach((booking) => {
-                const measuredHeight = measuredBookingHeights[booking.id];
-                if (!measuredHeight) return;
-
                 const startMinutes = timeToMinutes(booking.start);
-                const endMinutes = timeToMinutes(booking.end);
                 const startHour = Math.floor(startMinutes / 60);
-                const endHour = Math.ceil(endMinutes / 60);
+                const rowIndex = startHour - 8;
+                if (rowIndex < 0 || rowIndex >= 10) return;
 
-                // L'ora in cui termina la prenotazione (o quella in cui occupa più spazio)
-                const lastRowIndex = endHour - 1 - 8;
-                if (lastRowIndex < 0 || lastRowIndex >= 10) return;
+                // Offset del blocco dentro la cella (quanti px dall'inizio della riga)
+                const minutesIntoHour = startMinutes % 60;
+                const offsetInRow = (minutesIntoHour / 60) * ROW_DEFAULT_HEIGHT;
 
-                // Quanti px della prenotazione cadono nelle righe precedenti all'ultima
-                let heightInPreviousRows = 0;
-                for (let h = startHour; h < endHour - 1; h++) {
-                  const rowIndex = h - 8;
-                  if (rowIndex < 0) continue;
-                  const overlapStart = Math.max(startMinutes, h * 60);
-                  const overlapEnd = Math.min(endMinutes, (h + 1) * 60);
-                  if (overlapEnd <= overlapStart) continue;
-                  heightInPreviousRows +=
-                    ((overlapEnd - overlapStart) / 60) * ROW_DEFAULT_HEIGHT;
-                }
+                // Altezza fissa del blocco prenotazione
+                const blockHeight =
+                  computeBookingBlockHeight(booking) + BOOKING_VISUAL_GAP * 2;
 
-                // Quanta frazione dell'ultima riga occupa la prenotazione
-                const lastRowStart = (endHour - 1) * 60;
-                const overlapInLast =
-                  Math.min(endMinutes, endHour * 60) -
-                  Math.max(startMinutes, lastRowStart);
-                const fractionInLast = overlapInLast / 60;
+                // Spazio necessario nella riga = offset + altezza blocco + gap
+                const needed = offsetInRow + blockHeight + BOOKING_VISUAL_GAP;
 
-                if (fractionInLast <= 0) return;
-
-                // Altezza necessaria nell'ultima riga perché il contenuto entri tutto
-                const neededInLastRow =
-                  (measuredHeight +
-                    BOOKING_VISUAL_GAP * 2 -
-                    heightInPreviousRows) /
-                  fractionInLast;
-
-                rowHeights[lastRowIndex] = Math.max(
-                  rowHeights[lastRowIndex],
-                  Math.ceil(neededInLastRow),
+                rowHeights[rowIndex] = Math.max(
+                  rowHeights[rowIndex],
+                  Math.ceil(needed),
                 );
               });
 
