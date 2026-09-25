@@ -9,9 +9,8 @@ import "./Visitatori.css";
  */
 
 const ROW_DEFAULT_HEIGHT = 60;
-const BOOKING_BASE_HEIGHT = 52;
-const REASON_CHARS_PER_LINE = 24;
-const REASON_LINE_HEIGHT = 15;
+const BOOKING_VISUAL_GAP = 6; // spazio fisso sopra/sotto/lati di ogni blocco
+const PX_PER_MINUTE = 1; // 1px per ogni minuto (grigio, giallo, spaziatori)
 
 const dayNames = ["LUN", "MAR", "MER", "GIO", "VEN"];
 
@@ -53,14 +52,6 @@ const timeToMinutes = (time) => {
   const [hours, minutes] = String(time).split(":").map(Number);
 
   return hours * 60 + minutes;
-};
-
-const minutesToTime = (minutes) => {
-  const hours = Math.floor(minutes / 60);
-
-  const mins = minutes % 60;
-
-  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
 };
 
 const normalizeTime = (time) => {
@@ -116,78 +107,42 @@ const isBookingActive = (booking) => {
  * ============================================================
  * ORA CORRENTE / CELLA PASSATA
  * ============================================================
- *
- * Restituisce:
- *
- * 0   = nessuna parte della cella è trascorsa
- * 0.5 = metà cella è trascorsa
- * 1   = cella completamente trascorsa
- *
- * È questa funzione che permette alla parte grigia
- * di avanzare insieme alla parte gialla.
- * ============================================================
  */
 
-const getSlotPastFraction = (date, hour) => {
+const getSlotFillFraction = (date, hour) => {
   const now = new Date();
 
-  const cellStart = new Date(date);
-  cellStart.setHours(hour, 0, 0, 0);
+  const isSameDay =
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
 
-  const cellEnd = new Date(date);
-  cellEnd.setHours(hour + 1, 0, 0, 0);
+  if (!isSameDay) {
+    // giorno passato = tutto grigio, giorno futuro = niente grigio
+    const cellEnd = new Date(date);
+    cellEnd.setHours(hour + 1, 0, 0, 0);
 
-  /*
-   * Giorno precedente / ora precedente.
-   */
-  if (cellEnd <= now) {
+    return cellEnd <= now ? 1 : 0;
+  }
+
+  if (now.getHours() > hour) {
     return 1;
   }
 
-  /*
-   * Giorno successivo / ora futura.
-   */
-  if (cellStart >= now) {
+  if (now.getHours() < hour) {
     return 0;
   }
 
-  /*
-   * Siamo dentro l'ora corrente.
-   */
-  const elapsed = now.getTime() - cellStart.getTime();
-
-  const duration = cellEnd.getTime() - cellStart.getTime();
-
-  return Math.max(0, Math.min(1, elapsed / duration));
+  return (now.getMinutes() * 60 + now.getSeconds()) / 3600;
 };
 
 const isPastSlot = (date, hour) => {
-  return getSlotPastFraction(date, hour) >= 1;
+  return getSlotFillFraction(date, hour) >= 1;
 };
 
 /*
  * ============================================================
- * INDISPONIBILITÀ
- * ============================================================
- *
- * Calcola esattamente quale parte della cella deve essere
- * colorata di giallo.
- *
- * Esempio:
- *
- * ore 14:00 - 15:00
- * ora attuale 14:20
- * indisponibilità 14:00 - 16:00
- *
- * risultato:
- *
- * 14:00 - 14:20 = GRIGIO
- * 14:20 - 15:00 = GIALLO
- *
- * Nella cella successiva:
- *
- * 15:00 - 16:00 = GIALLO
- *
+ * INDISPONIBILITÀ (in percentuale rispetto ai 60 minuti nominali)
  * ============================================================
  */
 
@@ -204,10 +159,6 @@ const getSlotUnavailabilityParts = (room, date, hour) => {
 
   const now = new Date();
 
-  /*
-   * Se l'intera cella è già trascorsa,
-   * non deve esserci giallo.
-   */
   if (cellEnd <= now) {
     return [];
   }
@@ -219,50 +170,24 @@ const getSlotUnavailabilityParts = (room, date, hour) => {
 
     const unavailableEnd = period.endAt ? new Date(period.endAt) : null;
 
-    /*
-     * L'indisponibilità è terminata prima
-     * dell'inizio della cella.
-     */
     if (unavailableEnd && unavailableEnd <= cellStart) {
       return;
     }
 
-    /*
-     * L'indisponibilità inizia dopo
-     * la fine della cella.
-     */
     if (unavailableStart >= cellEnd) {
       return;
     }
 
-    /*
-     * Punto iniziale dell'indisponibilità
-     * dentro questa cella.
-     */
     let visibleStart = new Date(
       Math.max(cellStart.getTime(), unavailableStart.getTime()),
     );
 
-    /*
-     * Se siamo nell'ora corrente,
-     * non dobbiamo colorare di giallo
-     * la parte già trascorsa.
-     *
-     * Il giallo deve quindi iniziare
-     * esattamente da "now".
-     */
     const isCurrentHour = cellStart <= now && now < cellEnd;
 
     if (isCurrentHour && visibleStart < now) {
       visibleStart = new Date(now);
     }
 
-    /*
-     * Punto finale dell'indisponibilità
-     * dentro questa cella.
-     *
-     * NULL = indisponibilità indefinita.
-     */
     const visibleEnd = new Date(
       Math.min(
         cellEnd.getTime(),
@@ -297,89 +222,11 @@ const getSlotUnavailabilityParts = (room, date, hour) => {
 
 /*
  * ============================================================
- * ALTEZZA PRENOTAZIONI
- * ============================================================
- */
-
-const estimateBookingContentHeight = (booking) => {
-  const nameLength = String(booking.name || "").length;
-
-  const reasonLength = String(booking.reason || "").length;
-
-  const nameLines = Math.max(1, Math.ceil(nameLength / 25));
-
-  const reasonLines = reasonLength
-    ? Math.max(1, Math.ceil(reasonLength / REASON_CHARS_PER_LINE))
-    : 0;
-
-  return (
-    BOOKING_BASE_HEIGHT +
-    Math.max(0, nameLines - 1) * REASON_LINE_HEIGHT +
-    reasonLines * REASON_LINE_HEIGHT
-  );
-};
-
-const computeBookingBlockOffset = (booking, rowHeights) => {
-  const startMinutes = timeToMinutes(booking.start);
-
-  const hour = Math.floor(startMinutes / 60);
-
-  const hourIndex = hour - 8;
-
-  if (hourIndex < 0 || hourIndex >= rowHeights.length) {
-    return 0;
-  }
-
-  const rowHeight = rowHeights[hourIndex] || ROW_DEFAULT_HEIGHT;
-
-  const minutesIntoHour = startMinutes % 60;
-
-  return (minutesIntoHour / 60) * rowHeight;
-};
-
-const computeBookingBlockHeight = (booking, rowHeights) => {
-  const startMinutes = timeToMinutes(booking.start);
-  const endMinutes = timeToMinutes(booking.end);
-
-  const duration = Math.max(0, endMinutes - startMinutes);
-
-  if (duration <= 0) {
-    return BOOKING_BASE_HEIGHT;
-  }
-
-  let height = 0;
-  let currentMinutes = startMinutes;
-
-  while (currentMinutes < endMinutes) {
-    const hour = Math.floor(currentMinutes / 60);
-    const hourIndex = hour - 8;
-
-    const nextHour = Math.min(endMinutes, (hour + 1) * 60);
-
-    const minutesInThisHour = nextHour - currentMinutes;
-    const rowHeight = rowHeights[hourIndex] || ROW_DEFAULT_HEIGHT;
-
-    height += (minutesInThisHour / 60) * rowHeight;
-
-    currentMinutes = nextHour;
-  }
-
-  return Math.max(height - 4, 1);
-};
-
-/*
- * ============================================================
  * APP
  * ============================================================
  */
 
 function Visitatori() {
-  /*
-   * ------------------------------------------------------------
-   * STATO
-   * ------------------------------------------------------------
-   */
-
   const [rooms, setRooms] = useState([]);
 
   const [roomWeeks, setRoomWeeks] = useState({});
@@ -388,30 +235,11 @@ function Visitatori() {
 
   const [roomsError, setRoomsError] = useState("");
 
-  const [measuredBookingHeights, setMeasuredBookingHeights] = useState({});
-
   const bookingBlockRefs = useRef({});
 
   const loadDataRequestRef = useRef(0);
 
-  /*
-   * Tick per aggiornare automaticamente
-   * le parti temporali del calendario.
-   */
   const [, forceMinuteTick] = useState(0);
-
-  /*
-   * ------------------------------------------------------------
-   * AGGIORNAMENTO TEMPORALE
-   * ------------------------------------------------------------
-   *
-   * Prima aggiorniamo esattamente al cambio
-   * del minuto e poi continuiamo ogni 60 secondi.
-   *
-   * In questo modo grigio, giallo e stato
-   * delle prenotazioni rimangono sincronizzati.
-   * ------------------------------------------------------------
-   */
 
   useEffect(() => {
     let intervalId = null;
@@ -441,27 +269,15 @@ function Visitatori() {
     };
   }, []);
 
-  /*
-   * ------------------------------------------------------------
-   * CARICAMENTO DATI
-   * ------------------------------------------------------------
-   */
-
   const loadData = async () => {
     const requestId = ++loadDataRequestRef.current;
 
     setRoomsError("");
 
-    /*
-     * SALE
-     */
-
     const { data: roomsData, error: roomsLoadError } = await supabase
       .from("rooms")
       .select("*")
-      .order("id", {
-        ascending: true,
-      });
+      .order("id", { ascending: true });
 
     if (roomsLoadError) {
       console.error("Errore caricamento sale:", roomsLoadError);
@@ -473,19 +289,11 @@ function Visitatori() {
       return;
     }
 
-    /*
-     * PRENOTAZIONI
-     */
-
     const { data: bookingsData, error: bookingsLoadError } = await supabase
       .from("bookings")
       .select("*")
-      .order("booking_date", {
-        ascending: true,
-      })
-      .order("start_time", {
-        ascending: true,
-      });
+      .order("booking_date", { ascending: true })
+      .order("start_time", { ascending: true });
 
     if (bookingsLoadError) {
       console.error("Errore caricamento prenotazioni:", bookingsLoadError);
@@ -497,14 +305,11 @@ function Visitatori() {
       return;
     }
 
-    /*
-     * INDISPONIBILITÀ SALE
-     */
-
     const { data: unavailabilityData, error: unavailabilityLoadError } =
-      await supabase.from("room_unavailability").select("*").order("start_at", {
-        ascending: true,
-      });
+      await supabase
+        .from("room_unavailability")
+        .select("*")
+        .order("start_at", { ascending: true });
 
     if (unavailabilityLoadError) {
       console.error(
@@ -515,13 +320,8 @@ function Visitatori() {
       setRoomsError("Impossibile caricare le indisponibilità delle sale.");
 
       setLoadingRooms(false);
-
       return;
     }
-
-    /*
-     * COSTRUZIONE SALE
-     */
 
     const loadedRooms = (roomsData || [])
       .filter((room) => room.active !== false)
@@ -530,17 +330,11 @@ function Visitatori() {
           .filter((booking) => booking.room_id === room.id)
           .map((booking) => ({
             id: booking.id,
-
             name: booking.user_name || "Prenotazione",
-
             ownerId: booking.user_id,
-
             day: booking.booking_date,
-
             start: normalizeTime(booking.start_time),
-
             end: normalizeTime(booking.end_time),
-
             reason: booking.reason || "",
           }));
 
@@ -548,23 +342,16 @@ function Visitatori() {
           .filter((item) => item.room_id === room.id)
           .map((item) => ({
             id: item.id,
-
             startAt: item.start_at,
-
             endAt: item.end_at,
           }));
 
         return {
           id: room.id,
-
           name: room.name,
-
           description: room.description || "",
-
           color: room.color || "#2563eb",
-
           bookings: roomBookings,
-
           unavailability: roomUnavailability,
         };
       });
@@ -575,15 +362,8 @@ function Visitatori() {
 
     setRooms(loadedRooms);
 
-    /*
-     * Inizializza la settimana corrente
-     * solo per le sale che non ne hanno già una.
-     */
-
     setRoomWeeks((previous) => {
-      const next = {
-        ...previous,
-      };
+      const next = { ...previous };
 
       const currentMonday = getMonday(new Date());
 
@@ -599,77 +379,36 @@ function Visitatori() {
     setLoadingRooms(false);
   };
 
-  /*
-   * ------------------------------------------------------------
-   * CARICAMENTO INIZIALE
-   * ------------------------------------------------------------
-   */
-
   useEffect(() => {
     setLoadingRooms(true);
 
     loadData();
   }, []);
 
-  /*
-   * ------------------------------------------------------------
-   * SUPABASE REALTIME
-   * ------------------------------------------------------------
-   *
-   * L'applicazione è pubblica e funziona
-   * anche senza autenticazione.
-   * ------------------------------------------------------------
-   */
-
   useEffect(() => {
     const channel = supabase
       .channel("ilabs-public-calendar-realtime")
-
-      /*
-       * PRENOTAZIONI
-       */
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "bookings",
-        },
+        { event: "*", schema: "public", table: "bookings" },
         () => {
           loadData();
         },
       )
-
-      /*
-       * SALE
-       */
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "rooms",
-        },
+        { event: "*", schema: "public", table: "rooms" },
         () => {
           loadData();
         },
       )
-
-      /*
-       * INDISPONIBILITÀ SALE
-       */
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "room_unavailability",
-        },
+        { event: "*", schema: "public", table: "room_unavailability" },
         () => {
           loadData();
         },
       )
-
       .subscribe((status) => {
         console.log("Realtime calendario visitatori:", status);
       });
@@ -678,38 +417,6 @@ function Visitatori() {
       supabase.removeChannel(channel);
     };
   }, []);
-
-  /*
-   * ------------------------------------------------------------
-   * MISURAZIONE PRENOTAZIONI
-   * ------------------------------------------------------------
-   */
-
-  useLayoutEffect(() => {
-    const measurements = {};
-
-    Object.entries(bookingBlockRefs.current).forEach(([bookingId, node]) => {
-      if (!node) {
-        return;
-      }
-
-      const height = node.getBoundingClientRect().height;
-
-      if (height > 0) {
-        measurements[bookingId] = height;
-      }
-    });
-
-    if (Object.keys(measurements).length > 0) {
-      setMeasuredBookingHeights(measurements);
-    }
-  }, [rooms]);
-
-  /*
-   * ------------------------------------------------------------
-   * NAVIGAZIONE SETTIMANE
-   * ------------------------------------------------------------
-   */
 
   const changeRoomWeek = (roomId, offset) => {
     setRoomWeeks((previous) => {
@@ -721,7 +428,6 @@ function Visitatori() {
 
       return {
         ...previous,
-
         [roomId]: next,
       };
     });
@@ -730,16 +436,9 @@ function Visitatori() {
   const goRoomToToday = (roomId) => {
     setRoomWeeks((previous) => ({
       ...previous,
-
       [roomId]: getMonday(new Date()),
     }));
   };
-
-  /*
-   * ------------------------------------------------------------
-   * CONTROLLO OCCUPAZIONE
-   * ------------------------------------------------------------
-   */
 
   const isHourOccupied = (room, dateKey, hour) => {
     const slotStart = hour * 60;
@@ -758,12 +457,6 @@ function Visitatori() {
       return bookingStart < slotEnd && bookingEnd > slotStart;
     });
   };
-
-  /*
-   * ============================================================
-   * RENDER
-   * ============================================================
-   */
 
   return (
     <div className="app">
@@ -880,21 +573,13 @@ function Visitatori() {
               const currentWeekStart =
                 roomWeeks[room.id] || getMonday(new Date());
 
-              const weekDays = Array.from(
-                {
-                  length: 5,
-                },
-                (_, index) => {
-                  const date = new Date(currentWeekStart);
+              const weekDays = Array.from({ length: 5 }, (_, index) => {
+                const date = new Date(currentWeekStart);
 
-                  date.setDate(currentWeekStart.getDate() + index);
+                date.setDate(currentWeekStart.getDate() + index);
 
-                  return date;
-                },
-              );
-
-              const isCurrentWeek =
-                currentWeekStart.getTime() === getMonday(new Date()).getTime();
+                return date;
+              });
 
               const weekTitle = `${weekDays[0].toLocaleDateString("it-IT", {
                 day: "numeric",
@@ -905,26 +590,13 @@ function Visitatori() {
                 year: "numeric",
               })}`;
 
-              /*
-               * ------------------------------------------------
-               * CALCOLO ALTEZZA RIGHE
-               * ------------------------------------------------
-               */
-
-              const rowHeights = Array.from(
-                { length: 10 },
-                () => ROW_DEFAULT_HEIGHT,
-              );
-
               return (
                 <div className="calendar-room" key={room.id}>
                   <div className="calendar-room-header">
                     <div className="calendar-room-name">
                       <span
                         className="calendar-room-color"
-                        style={{
-                          backgroundColor: room.color,
-                        }}
+                        style={{ backgroundColor: room.color }}
                       />
 
                       <div>
@@ -991,71 +663,39 @@ function Visitatori() {
                       })}
                     </div>
 
-                    {Array.from(
-                      {
-                        length: 10,
-                      },
-                      (_, index) => {
-                        const hour = index + 8;
+                    {Array.from({ length: 10 }, (_, index) => {
+                      const hour = index + 8;
 
-                        const rowHeight = rowHeights[index];
+                      return (
+                        <div
+                          className="calendar-row"
+                          key={hour}
+                          style={{ minHeight: `${ROW_DEFAULT_HEIGHT}px` }}
+                        >
+                          <div className="time-cell">
+                            {String(hour).padStart(2, "0")}:00
+                          </div>
 
-                        return (
-                          <div
-                            className="calendar-row"
-                            key={hour}
-                            style={{
-                              height: `${rowHeight}px`,
-                            }}
-                          >
-                            <div className="time-cell">
-                              {String(hour).padStart(2, "0")}
-                              :00
-                            </div>
+                          {weekDays.map((date) => {
+                            const dateKey = formatDateKey(date);
 
-                            {weekDays.map((date) => {
-                              const dateKey = formatDateKey(date);
+                            const occupied = isHourOccupied(
+                              room,
+                              dateKey,
+                              hour,
+                            );
 
-                              const occupied = isHourOccupied(
-                                room,
-                                dateKey,
-                                hour,
-                              );
+                            const past = isPastSlot(date, hour);
 
-                              /*
-                               * ====================================================
-                               * PARTE TEMPORALE
-                               * ====================================================
-                               *
-                               * pastFraction viene calcolata con lo stesso
-                               * "now" utilizzato dall'indisponibilità.
-                               *
-                               * Quindi:
-                               *
-                               * 14:00 -> 14:20
-                               *
-                               * GRIGIO  = 0% -> 33,33%
-                               * GIALLO  = 33,33% -> 100%
-                               *
-                               * Se l'indisponibilità parte alle 14:30:
-                               *
-                               * GRIGIO  = 0% -> 33,33%
-                               * GIALLO  = 50% -> 100%
-                               *
-                               * ====================================================
-                               */
+                            const fillFraction = past
+                              ? 1
+                              : getSlotFillFraction(date, hour);
 
-                              const pastFraction = getSlotPastFraction(
-                                date,
-                                hour,
-                              );
+                            const unavailabilityParts =
+                              getSlotUnavailabilityParts(room, date, hour);
 
-                              const past = pastFraction >= 1;
-
-                              const unavailabilityParts =
-                                getSlotUnavailabilityParts(room, date, hour);
-
-                              const booking = room.bookings.find((item) => {
+                            const bookingsInCell = room.bookings
+                              .filter((item) => {
                                 if (item.day !== dateKey) {
                                   return false;
                                 }
@@ -1065,151 +705,168 @@ function Visitatori() {
                                 return (
                                   start >= hour * 60 && start < (hour + 1) * 60
                                 );
-                              });
+                              })
+                              .sort(
+                                (a, b) =>
+                                  timeToMinutes(a.start) -
+                                  timeToMinutes(b.start),
+                              );
 
-                              const isToday =
-                                dateKey === formatDateKey(new Date());
+                            const isToday =
+                              dateKey === formatDateKey(new Date());
 
-                              const cellKey = `${dateKey}-${hour}`;
+                            const cellKey = `${dateKey}-${hour}`;
 
-                              return (
-                                <div
-                                  className={`calendar-cell ${
-                                    occupied ? "occupied" : ""
-                                  } ${past ? "past" : ""} ${
-                                    isToday ? "today-cell" : ""
-                                  }`}
-                                  key={cellKey}
-                                >
-                                  {/*
-                                   * ==================================================
-                                   * PARTE GRIGIA
-                                   * ==================================================
-                                   *
-                                   * La parte grigia riempie dall'inizio
-                                   * della cella fino all'ora attuale.
-                                   *
-                                   * È presente anche nell'ora corrente.
-                                   * ==================================================
-                                   */}
+                            return (
+                              <div
+                                className={`calendar-cell ${
+                                  occupied ? "occupied" : ""
+                                } ${past ? "past" : ""} ${
+                                  isToday ? "today-cell" : ""
+                                }`}
+                                key={cellKey}
+                              >
+                                {/* PARTE GRIGIA: sempre in px, 1px = 1 minuto */}
+                                {fillFraction > 0 && fillFraction < 1 && (
+                                  <div
+                                    className="calendar-cell-fill"
+                                    style={{
+                                      height: `${
+                                        Math.floor(fillFraction * 60) *
+                                        PX_PER_MINUTE
+                                      }px`,
+                                      minHeight: 0,
+                                      display: "block",
+                                    }}
+                                  />
+                                )}
+                                {fillFraction >= 1 && (
+                                  <div
+                                    className="calendar-cell-fill"
+                                    style={{
+                                      height: "100%",
+                                      display: "block",
+                                    }}
+                                  />
+                                )}
 
-                                  {pastFraction > 0 && (
+                                {/* PARTE GIALLA: in px, convertita dalla percentuale */}
+                                {!past &&
+                                  unavailabilityParts.map((part, partIndex) => (
                                     <div
-                                      className="calendar-cell-fill calendar-cell-past"
+                                      key={`unavailability-${room.id}-${dateKey}-${hour}-${partIndex}`}
+                                      className="calendar-cell-unavailable"
                                       style={{
-                                        position: "absolute",
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        height: `${pastFraction * 100}%`,
-                                        backgroundColor: "#f1f2f4",
-                                        zIndex: 1,
-                                        pointerEvents: "none",
+                                        top: `${
+                                          (part.top / 100) * ROW_DEFAULT_HEIGHT
+                                        }px`,
+                                        height: `${
+                                          (part.height / 100) *
+                                          ROW_DEFAULT_HEIGHT
+                                        }px`,
                                       }}
                                     />
-                                  )}
+                                  ))}
 
-                                  {/*
-                                   * ==================================================
-                                   * PARTE GIALLA
-                                   * ==================================================
-                                   *
-                                   * L'indisponibilità viene mostrata solo
-                                   * nella parte non ancora trascorsa.
-                                   *
-                                   * Il risultato viene calcolato in percentuale
-                                   * rispetto alla cella.
-                                   * ==================================================
-                                   */}
+                                {/* PRENOTAZIONI, impilate con spaziatori in px */}
+                                {bookingsInCell.map((booking, index) => {
+                                  const startMinutes = timeToMinutes(
+                                    booking.start,
+                                  );
+                                  const endMinutes = timeToMinutes(booking.end);
+                                  const hourStart = hour * 60;
 
-                                  {!past &&
-                                    unavailabilityParts.map(
-                                      (part, partIndex) => (
+                                  const prevEndMinutes =
+                                    index === 0
+                                      ? hourStart
+                                      : timeToMinutes(
+                                          bookingsInCell[index - 1].end,
+                                        );
+
+                                  const minutesBefore = Math.max(
+                                    0,
+                                    startMinutes - prevEndMinutes,
+                                  );
+
+                                  const spacerHeight =
+                                    minutesBefore * PX_PER_MINUTE;
+
+                                  return (
+                                    <div
+                                      key={booking.id}
+                                      style={{ position: "relative" }}
+                                    >
+                                      {spacerHeight > 0 && (
                                         <div
-                                          key={`unavailability-${room.id}-${dateKey}-${hour}-${partIndex}`}
-                                          className="calendar-cell-fill calendar-cell-unavailable"
                                           style={{
-                                            position: "absolute",
-                                            left: 0,
-                                            right: 0,
-                                            top: `${part.top}%`,
-                                            height: `${part.height}%`,
-                                            zIndex: 2,
-                                            pointerEvents: "none",
+                                            height: `${spacerHeight}px`,
+                                            flexShrink: 0,
                                           }}
                                         />
-                                      ),
-                                    )}
+                                      )}
 
-                                  {/*
-                                   * ==================================================
-                                   * PRENOTAZIONE
-                                   * ==================================================
-                                   */}
+                                      <div
+                                        ref={(node) => {
+                                          bookingBlockRefs.current[booking.id] =
+                                            node;
+                                        }}
+                                        className={`booking-block ${
+                                          isBookingActive(booking)
+                                            ? "booking-block-active"
+                                            : ""
+                                        } ${
+                                          isBookingExpired(booking)
+                                            ? "booking-block-expired"
+                                            : ""
+                                        }`}
+                                        style={{
+                                          backgroundColor: isBookingExpired(
+                                            booking,
+                                          )
+                                            ? undefined
+                                            : isBookingActive(booking)
+                                              ? "#16a34a"
+                                              : "#2563eb",
+                                          position: "relative",
+                                          margin: `${BOOKING_VISUAL_GAP}px ${BOOKING_VISUAL_GAP}px`,
+                                          boxSizing: "border-box",
+                                          borderRadius: "8px",
+                                          overflow: "visible",
+                                        }}
+                                      >
+                                        <div className="booking-top-row">
+                                          <strong>{booking.name}</strong>
+                                        </div>
 
-                                  {booking && (
-                                    <div
-                                      ref={(node) => {
-                                        bookingBlockRefs.current[booking.id] =
-                                          node;
-                                      }}
-                                      className={`booking-block ${
-                                        isBookingActive(booking)
-                                          ? "booking-block-active"
-                                          : ""
-                                      } ${
-                                        isBookingExpired(booking)
-                                          ? "booking-block-expired"
-                                          : ""
-                                      }`}
-                                      style={{
-                                        backgroundColor: isBookingExpired(
-                                          booking,
-                                        )
-                                          ? undefined
-                                          : isBookingActive(booking)
-                                            ? "#16a34a"
-                                            : "#2563eb",
+                                        <span className="booking-time">
+                                          {booking.start} – {booking.end}
+                                        </span>
 
-                                        minHeight: `${computeBookingBlockHeight(
-                                          booking,
-                                          rowHeights,
-                                        )}px`,
-
-                                        marginTop: `${computeBookingBlockOffset(
-                                          booking,
-                                          rowHeights,
-                                        )}px`,
-
-                                        position: "relative",
-                                        left: "50%",
-                                        transform: "translateX(-50%)",
-                                        width: "calc(100% - 12px)",
-                                        boxSizing: "border-box",
-                                      }}
-                                    >
-                                      <div className="booking-top-row">
-                                        <strong>{booking.name}</strong>
+                                        {booking.reason && (
+                                          <span className="booking-reason">
+                                            {booking.reason}
+                                          </span>
+                                        )}
                                       </div>
 
-                                      <span className="booking-time">
-                                        {booking.start} – {booking.end}
-                                      </span>
-
-                                      {booking.reason && (
-                                        <span className="booking-reason">
-                                          {booking.reason}
-                                        </span>
-                                      )}
+                                      {index === bookingsInCell.length - 1 &&
+                                        endMinutes % 60 !== 0 && (
+                                          <div
+                                            style={{
+                                              height: "15px",
+                                              flexShrink: 0,
+                                            }}
+                                          />
+                                        )}
                                     </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      },
-                    )}
+                                  );
+                                })}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
